@@ -6,9 +6,10 @@ import { OptimizationResult } from '@/lib/optimization';
 
 interface MetricsCardsProps {
   result: OptimizationResult | null;
+  gradingMode?: 'flat' | 'sloped';
 }
 
-export default function MetricsCards({ result }: MetricsCardsProps) {
+export default function MetricsCards({ result, gradingMode = 'sloped' }: MetricsCardsProps) {
   if (!result) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -43,19 +44,26 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
     details,
   } = result;
 
+  const isSloped = gradingMode === 'sloped';
+
   // Statistics
-  const cutPointsCount = details.filter((d) => d.depthType === 'cut').length;
-  const fillPointsCount = details.filter((d) => d.depthType === 'fill').length;
-  const gradePointsCount = details.filter((d) => d.depthType === 'grade').length;
+  const activeCutVolume = isSloped ? totalCutVolumeM3 : flatCutVolumeM3;
+  const activeFillVolume = isSloped ? totalFillVolumeM3 : flatFillVolumeM3;
+  const activeNetBalance = isSloped ? netBalanceM3 : flatNetBalanceM3;
+  const activeTargetZ = isSloped ? optimalTargetZ : flatTargetZ;
+
+  const cutPointsCount = details.filter((d) => (isSloped ? d.depthType : d.flatDepthType) === 'cut').length;
+  const fillPointsCount = details.filter((d) => (isSloped ? d.depthType : d.flatDepthType) === 'fill').length;
+  const gradePointsCount = details.filter((d) => (isSloped ? d.depthType : d.flatDepthType) === 'grade').length;
 
   // Balance status determination
-  const totalMaterialMovedM3 = totalCutVolumeM3 + totalFillVolumeM3;
-  const balanceRatio = totalMaterialMovedM3 > 0 ? Math.abs(netBalanceM3) / totalMaterialMovedM3 : 0;
+  const totalMaterialMovedM3 = activeCutVolume + activeFillVolume;
+  const balanceRatio = totalMaterialMovedM3 > 0 ? Math.abs(activeNetBalance) / totalMaterialMovedM3 : 0;
   
   // Cut heavy vs Fill heavy vs Balanced
   let balanceStatus: 'surplus' | 'deficit' | 'balanced' = 'balanced';
   if (balanceRatio > 0.05) {
-    balanceStatus = netBalanceM3 > 0 ? 'surplus' : 'deficit';
+    balanceStatus = activeNetBalance > 0 ? 'surplus' : 'deficit';
   }
 
   // Format values
@@ -95,7 +103,7 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
           <div>
             <span className="font-extrabold block text-sm mb-1 uppercase tracking-wider text-amber-900">Topographic Alert: Large Elevation Range</span>
             The difference between maximum ({fmt(maxZ)} m) and minimum ({fmt(minZ)} m) elevations is {fmt(maxZ - minZ)} m. 
-            Because Cut and Fill depths are constrained to a maximum of 1.5 m, grading will result in capped cuts/fills at extreme points.
+            Deep cuts/fills exceeding 1.5 m will be required at extreme points.
           </div>
         </div>
       )}
@@ -110,7 +118,7 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
             <ArrowDownCircle className="w-5 h-5 text-red-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-black text-slate-800">{fmt(totalCutVolumeM3)}</span>
+            <span className="text-2xl font-black text-slate-800">{fmt(activeCutVolume)}</span>
             <span className="text-xs text-red-650 font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
@@ -129,7 +137,7 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
             <ArrowUpCircle className="w-5 h-5 text-[#112E81]" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-black text-slate-800">{fmt(totalFillVolumeM3)}</span>
+            <span className="text-2xl font-black text-slate-800">{fmt(activeFillVolume)}</span>
             <span className="text-xs text-[#112E81] font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
@@ -161,7 +169,7 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
               balanceStatus === 'surplus' ? 'text-red-600' :
               balanceStatus === 'deficit' ? 'text-[#112E81]' : 'text-[#36ADA3]'
             }`}>
-              {netBalanceM3 > 0 ? `+${fmt(netBalanceM3)}` : fmt(netBalanceM3)}
+              {activeNetBalance > 0 ? `+${fmt(activeNetBalance)}` : fmt(activeNetBalance)}
             </span>
             <span className="text-xs text-slate-500 font-semibold ml-1">m³</span>
           </div>
@@ -205,13 +213,13 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
             <Compass className="w-5 h-5 text-[#36ADA3]" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-black text-[#36ADA3]">{fmt(optimalTargetZ)}</span>
+            <span className="text-2xl font-black text-[#36ADA3]">{fmt(activeTargetZ)}</span>
             <span className="text-xs text-[#36ADA3] font-bold ml-1">m</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
             <span>Slope configuration:</span>
             <span className="font-extrabold text-[#36ADA3] uppercase text-[9px] bg-[#36ADA3]/10 px-1.5 py-0.5 rounded border border-[#36ADA3]/25">
-              {optimalSlopeAngleDeg > 0 ? `${optimalSlopeAngleDeg.toFixed(1)}° @ ${optimalSlopeDirectionDeg}°` : 'Flat (0°)'}
+              {isSloped && optimalSlopeAngleDeg > 0 ? `${optimalSlopeAngleDeg.toFixed(1)}° @ ${optimalSlopeDirectionDeg}°` : 'Flat (0°)'}
             </span>
           </div>
         </div>

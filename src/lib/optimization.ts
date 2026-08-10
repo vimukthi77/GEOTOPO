@@ -12,9 +12,12 @@ export interface CutFillDetail {
   z: number;
   targetZ: number;       // Optimized sloped target Z at this coordinate (m)
   flatTargetZ: number;   // Baseline flat target Z (m)
-  cutDepth: number;      // Depth of excavation (m)
-  fillDepth: number;     // Depth of embankment (m)
-  depthType: 'cut' | 'fill' | 'grade';
+  cutDepth: number;      // Depth of excavation (m) (sloped)
+  fillDepth: number;     // Depth of embankment (m) (sloped)
+  depthType: 'cut' | 'fill' | 'grade'; // Sloped status
+  flatCutDepth: number;  // Flat cut depth (m)
+  flatFillDepth: number; // Flat fill depth (m)
+  flatDepthType: 'cut' | 'fill' | 'grade'; // Flat status
 }
 
 export interface OptimizationResult {
@@ -52,11 +55,11 @@ export function calculateDepths(pointZ: number, targetZ: number) {
   let fillDepth = 0;
 
   if (diff > 0) {
-    // Cut needed, capped at 1.5m (approx. 5 feet)
-    cutDepth = Math.min(1.5, diff);
+    // Cut needed (uncapped)
+    cutDepth = diff;
   } else if (diff < 0) {
-    // Fill needed, capped at 1.5m (approx. 5 feet)
-    fillDepth = Math.min(1.5, Math.abs(diff));
+    // Fill needed (uncapped)
+    fillDepth = Math.abs(diff);
   }
 
   const depthType: 'cut' | 'fill' | 'grade' = 
@@ -289,6 +292,9 @@ export function optimizeTargetGrade(
     totalCutDepth += cutDepth;
     totalFillDepth += fillDepth;
 
+    // Calculate flat target grade depths for comparative data table display
+    const { cutDepth: flatCutDepth, fillDepth: flatFillDepth, depthType: flatDepthType } = calculateDepths(p.z, flatTargetZ);
+
     details.push({
       pointId: p.pointId,
       x: p.x,
@@ -299,6 +305,9 @@ export function optimizeTargetGrade(
       cutDepth,
       fillDepth,
       depthType,
+      flatCutDepth,
+      flatFillDepth,
+      flatDepthType,
     });
   }
 

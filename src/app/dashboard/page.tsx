@@ -34,6 +34,9 @@ export default function DashboardPage() {
   // Tab state: 'visuals' | 'table'
   const [activeTab, setActiveTab] = useState<'visuals' | 'table'>('visuals');
 
+  // Grading Mode state: 'flat' | 'sloped'
+  const [gradingMode, setGradingMode] = useState<'flat' | 'sloped'>('sloped');
+
   // Callback when survey coordinates are paste-processed or uploaded
   const handleDataParsed = (data: {
     zone: string;
@@ -333,12 +336,12 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-6">
                 {/* Metric Indicators */}
-                <MetricsCards result={activeResult} />
+                <MetricsCards result={activeResult} gradingMode={gradingMode} />
 
                 {/* Dashboard Tabs */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col space-y-6">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="px-2.5 py-1 text-xs font-black bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20 rounded">
                         {zone}
                       </span>
@@ -346,25 +349,48 @@ export default function DashboardPage() {
                       <span className="text-xs text-slate-400">• {points.length} coordinates loaded</span>
                     </div>
 
-                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <button
-                        onClick={() => setActiveTab('visuals')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          activeTab === 'visuals' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        <Map className="w-3.5 h-3.5" />
-                        Visual Maps
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('table')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          activeTab === 'table' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        <Table className="w-3.5 h-3.5" />
-                        Details Table
-                      </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Grading Mode Toggle Selector */}
+                      <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button
+                          onClick={() => setGradingMode('sloped')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            gradingMode === 'sloped' ? 'bg-[#36ADA3] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Sloped Plane (0-5°)
+                        </button>
+                        <button
+                          onClick={() => setGradingMode('flat')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            gradingMode === 'flat' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Flat Plane
+                        </button>
+                      </div>
+
+                      {/* Visuals vs Table Toggle */}
+                      <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button
+                          onClick={() => setActiveTab('visuals')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            activeTab === 'visuals' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          <Map className="w-3.5 h-3.5" />
+                          Visual Maps
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('table')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            activeTab === 'table' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          <Table className="w-3.5 h-3.5" />
+                          Details Table
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -397,6 +423,7 @@ export default function DashboardPage() {
                             <th className="pb-3">Easting (X)</th>
                             <th className="pb-3">Northing (Y)</th>
                             <th className="pb-3">Elevation (Z)</th>
+                            <th className="pb-3">Optimal Grade (Z)</th>
                             <th className="pb-3">Cut Depth (m)</th>
                             <th className="pb-3">Fill Depth (m)</th>
                             <th className="pb-3 pr-2 text-right">Status</th>
@@ -409,19 +436,30 @@ export default function DashboardPage() {
                               <td className="py-2.5">{p.x.toFixed(1)}</td>
                               <td className="py-2.5">{p.y.toFixed(1)}</td>
                               <td className="py-2.5 font-bold text-slate-850">{p.z.toFixed(2)}</td>
-                              <td className="py-2.5 text-red-600">{p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-'}</td>
-                              <td className="py-2.5 text-[#112E81]">{p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-'}</td>
+                              <td className="py-2.5 font-bold text-[#36ADA3]">
+                                {gradingMode === 'sloped' ? p.targetZ.toFixed(2) : p.flatTargetZ.toFixed(2)}
+                              </td>
+                              <td className="py-2.5 text-red-600">
+                                {gradingMode === 'sloped'
+                                  ? (p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-')
+                                  : (p.flatCutDepth > 0 ? p.flatCutDepth.toFixed(2) : '-')}
+                              </td>
+                              <td className="py-2.5 text-[#112E81]">
+                                {gradingMode === 'sloped'
+                                  ? (p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-')
+                                  : (p.flatFillDepth > 0 ? p.flatFillDepth.toFixed(2) : '-')}
+                              </td>
                               <td className="py-2.5 pr-2 text-right">
                                 <span
                                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                    p.depthType === 'cut'
+                                    (gradingMode === 'sloped' ? p.depthType : p.flatDepthType) === 'cut'
                                       ? 'bg-red-50 text-red-700 border border-red-250'
-                                      : p.depthType === 'fill'
+                                      : (gradingMode === 'sloped' ? p.depthType : p.flatDepthType) === 'fill'
                                       ? 'bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20'
                                       : 'bg-[#36ADA3]/10 text-[#36ADA3] border border-[#36ADA3]/20'
                                   }`}
                                 >
-                                  {p.depthType}
+                                  {gradingMode === 'sloped' ? p.depthType : p.flatDepthType}
                                 </span>
                               </td>
                             </tr>
@@ -451,6 +489,7 @@ export default function DashboardPage() {
                   <th className="p-2 border-r border-slate-200">Easting (X)</th>
                   <th className="p-2 border-r border-slate-200">Northing (Y)</th>
                   <th className="p-2 border-r border-slate-200">Elevation (Z)</th>
+                  <th className="p-2 border-r border-slate-200">Optimal Grade (Z)</th>
                   <th className="p-2 border-r border-slate-200">Cut Depth (m)</th>
                   <th className="p-2 border-r border-slate-200">Fill Depth (m)</th>
                   <th className="p-2">Status</th>
@@ -463,9 +502,22 @@ export default function DashboardPage() {
                     <td className="p-2 border-r border-slate-200">{p.x.toFixed(1)}</td>
                     <td className="p-2 border-r border-slate-200">{p.y.toFixed(1)}</td>
                     <td className="p-2 border-r border-slate-200">{p.z.toFixed(2)}</td>
-                    <td className="p-2 border-r border-slate-200 text-red-600">{p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-'}</td>
-                    <td className="p-2 border-r border-slate-200 text-[#112E81]">{p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-'}</td>
-                    <td className="p-2 uppercase font-bold text-[10px]">{p.depthType}</td>
+                    <td className="p-2 border-r border-slate-200 font-bold text-[#36ADA3]">
+                      {gradingMode === 'sloped' ? p.targetZ.toFixed(2) : p.flatTargetZ.toFixed(2)}
+                    </td>
+                    <td className="p-2 border-r border-slate-200 text-red-600">
+                      {gradingMode === 'sloped'
+                        ? (p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-')
+                        : (p.flatCutDepth > 0 ? p.flatCutDepth.toFixed(2) : '-')}
+                    </td>
+                    <td className="p-2 border-r border-slate-200 text-[#112E81]">
+                      {gradingMode === 'sloped'
+                        ? (p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-')
+                        : (p.flatFillDepth > 0 ? p.flatFillDepth.toFixed(2) : '-')}
+                    </td>
+                    <td className="p-2 uppercase font-bold text-[10px]">
+                      {gradingMode === 'sloped' ? p.depthType : p.flatDepthType}
+                    </td>
                   </tr>
                 ))}
               </tbody>

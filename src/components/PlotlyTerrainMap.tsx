@@ -71,7 +71,7 @@ export default function PlotlyTerrainMap({
     mode: 'markers',
     name: 'Cut (Excavation)',
     type: 'scatter3d',
-    text: cutPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>Cut Depth: ${p.cutDepth.toFixed(2)} m`),
+    text: cutPoints.map(p => `Pt ${p.pointId}<br>Original Z: ${p.z.toFixed(2)} m<br>Target Z: ${p.targetZ.toFixed(2)} m<br>Cut: ${p.cutDepth.toFixed(2)} m`),
     hoverinfo: 'text',
     marker: {
       color: '#dc2626',
@@ -92,7 +92,7 @@ export default function PlotlyTerrainMap({
     mode: 'markers',
     name: 'Fill (Embankment)',
     type: 'scatter3d',
-    text: fillPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>Fill Depth: ${p.fillDepth.toFixed(2)} m`),
+    text: fillPoints.map(p => `Pt ${p.pointId}<br>Original Z: ${p.z.toFixed(2)} m<br>Target Z: ${p.targetZ.toFixed(2)} m<br>Fill: ${p.fillDepth.toFixed(2)} m`),
     hoverinfo: 'text',
     marker: {
       color: '#112E81',
@@ -113,7 +113,7 @@ export default function PlotlyTerrainMap({
     mode: 'markers',
     name: 'At Grade',
     type: 'scatter3d',
-    text: gradePoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>On Grade`),
+    text: gradePoints.map(p => `Pt ${p.pointId}<br>Original Z: ${p.z.toFixed(2)} m<br>Target Z: ${p.targetZ.toFixed(2)} m<br>On Grade`),
     hoverinfo: 'text',
     marker: {
       color: '#36ADA3',
