@@ -303,7 +303,7 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
             />
             {customSpacing && (
               <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-500 font-bold uppercase pointer-events-none">
-                Feet spacing (A = {parseFloat(customSpacing) * parseFloat(customSpacing)} sf)
+                Meters spacing (A = {parseFloat(customSpacing) * parseFloat(customSpacing)} m²)
               </span>
             )}
           </div>
@@ -325,7 +325,7 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
           >
             <Upload className="w-6 h-6 text-slate-400 group-hover:text-[#112E81] group-hover:scale-105 transition" />
             <div className="text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition">Upload File (.xlsx, .csv)</div>
-            <div className="text-[10px] text-slate-500">Excel columns: PointId, X(Easting), Y(Northing), Z(Elevation)</div>
+            <div className="text-[10px] text-slate-500">Excel columns: PointId, X(Easting) (m), Y(Northing) (m), Z(Elevation) (m)</div>
           </button>
         </div>
 

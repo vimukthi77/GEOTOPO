@@ -21,16 +21,25 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
 
   const {
     optimalTargetZ,
+    optimalSlopeX,
+    optimalSlopeY,
+    optimalSlopeAngleDeg,
+    optimalSlopeDirectionDeg,
     avgGroundHeight,
-    totalCutVolumeCf,
-    totalCutVolumeCy,
-    totalFillVolumeCf,
-    totalFillVolumeCy,
-    netBalanceCf,
-    netBalanceCy,
+    
+    totalCutVolumeM3,
+    totalFillVolumeM3,
+    netBalanceM3,
+    
+    flatTargetZ,
+    flatCutVolumeM3,
+    flatFillVolumeM3,
+    flatNetBalanceM3,
+    
     elevationRangeWarning,
     minZ,
     maxZ,
+    gridArea,
     details,
   } = result;
 
@@ -40,28 +49,53 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
   const gradePointsCount = details.filter((d) => d.depthType === 'grade').length;
 
   // Balance status determination
-  const totalMaterialMovedCf = totalCutVolumeCf + totalFillVolumeCf;
-  const balanceRatio = totalMaterialMovedCf > 0 ? Math.abs(netBalanceCf) / totalMaterialMovedCf : 0;
+  const totalMaterialMovedM3 = totalCutVolumeM3 + totalFillVolumeM3;
+  const balanceRatio = totalMaterialMovedM3 > 0 ? Math.abs(netBalanceM3) / totalMaterialMovedM3 : 0;
   
   // Cut heavy vs Fill heavy vs Balanced
   let balanceStatus: 'surplus' | 'deficit' | 'balanced' = 'balanced';
   if (balanceRatio > 0.05) {
-    balanceStatus = netBalanceCf > 0 ? 'surplus' : 'deficit';
+    balanceStatus = netBalanceM3 > 0 ? 'surplus' : 'deficit';
   }
 
   // Format values
   const fmt = (val: number) => val.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
+  // Volume savings calculation
+  const flatTotalVolume = flatCutVolumeM3 + flatFillVolumeM3;
+  const slopedTotalVolume = totalCutVolumeM3 + totalFillVolumeM3;
+  const savingsPercent = flatTotalVolume > 0 ? ((flatTotalVolume - slopedTotalVolume) / flatTotalVolume) * 100 : 0;
+
   return (
     <div className="space-y-6">
+      {/* Comparative Savings Alert Card */}
+      {flatTotalVolume > 0 && (
+        <div className="bg-gradient-to-r from-[#112E81] to-[#1d4ed8] text-white p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+          <div>
+            <h4 className="text-sm font-extrabold uppercase tracking-wider text-[#36ADA3] flex items-center gap-1.5">
+              <Scale className="w-4 h-4" />
+              Sloped Grading Optimization Savings
+            </h4>
+            <p className="text-xs text-slate-100 mt-1">
+              By grading at an optimized slope of <span className="font-bold text-white">{optimalSlopeAngleDeg.toFixed(1)}°</span> (directed at <span className="font-bold text-white">{optimalSlopeDirectionDeg}°</span>), 
+              the total earthwork volume was reduced from <span className="font-bold">{fmt(flatTotalVolume)} m³</span> (flat plane) to <span className="font-bold">{fmt(slopedTotalVolume)} m³</span>.
+            </p>
+          </div>
+          <div className="bg-white/10 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl self-start md:self-center text-center">
+            <span className="block text-[10px] uppercase font-bold text-slate-200">Earthwork Saved</span>
+            <span className="text-lg font-black text-[#36ADA3]">{savingsPercent.toFixed(1)}%</span>
+          </div>
+        </div>
+      )}
+
       {/* Constraints Warning Alert */}
       {elevationRangeWarning && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3.5 text-amber-800 text-xs shadow-sm">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <span className="font-extrabold block text-sm mb-1 uppercase tracking-wider text-amber-900">Topographic Alert: Large Elevation Range</span>
-            The difference between maximum ({fmt(maxZ)} ft) and minimum ({fmt(minZ)} ft) elevations is {fmt(maxZ - minZ)} ft. 
-            Because both Cut and Fill depths are constrained to a maximum of 5.0 ft, grading to the optimal grade will result in capped cuts/fills at extreme points.
+            The difference between maximum ({fmt(maxZ)} m) and minimum ({fmt(minZ)} m) elevations is {fmt(maxZ - minZ)} m. 
+            Because Cut and Fill depths are constrained to a maximum of 1.5 m, grading will result in capped cuts/fills at extreme points.
           </div>
         </div>
       )}
@@ -76,11 +110,11 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
             <ArrowDownCircle className="w-5 h-5 text-red-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-black text-slate-800">{fmt(totalCutVolumeCy)}</span>
-            <span className="text-xs text-red-600 font-bold ml-1">CY</span>
+            <span className="text-2xl font-black text-slate-800">{fmt(totalCutVolumeM3)}</span>
+            <span className="text-xs text-red-650 font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>{fmt(totalCutVolumeCf)} CF</span>
+            <span>Grid Cell Area: {fmt(gridArea)} m²</span>
             <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
               {cutPointsCount} points
             </span>
@@ -95,11 +129,11 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
             <ArrowUpCircle className="w-5 h-5 text-[#112E81]" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-black text-slate-800">{fmt(totalFillVolumeCy)}</span>
-            <span className="text-xs text-[#112E81] font-bold ml-1">CY</span>
+            <span className="text-2xl font-black text-slate-800">{fmt(totalFillVolumeM3)}</span>
+            <span className="text-xs text-[#112E81] font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>{fmt(totalFillVolumeCf)} CF</span>
+            <span>Grid Cell Area: {fmt(gridArea)} m²</span>
             <span className="bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20 px-1.5 py-0.5 rounded font-bold">
               {fillPointsCount} points
             </span>
@@ -127,12 +161,12 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
               balanceStatus === 'surplus' ? 'text-red-600' :
               balanceStatus === 'deficit' ? 'text-[#112E81]' : 'text-[#36ADA3]'
             }`}>
-              {netBalanceCy > 0 ? `+${fmt(netBalanceCy)}` : fmt(netBalanceCy)}
+              {netBalanceM3 > 0 ? `+${fmt(netBalanceM3)}` : fmt(netBalanceM3)}
             </span>
-            <span className="text-xs text-slate-500 font-semibold ml-1">CY</span>
+            <span className="text-xs text-slate-500 font-semibold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>{fmt(netBalanceCf)} CF</span>
+            <span>Status:</span>
             {balanceStatus === 'surplus' && (
               <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold uppercase text-[9px]">Surplus (Export)</span>
             )}
@@ -153,12 +187,12 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
           </div>
           <div className="mt-2">
             <span className="text-2xl font-black text-slate-800">{fmt(avgGroundHeight)}</span>
-            <span className="text-xs text-purple-600 font-bold ml-1">FT</span>
+            <span className="text-xs text-purple-600 font-bold ml-1">m</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>Terrain Range:</span>
+            <span>Range:</span>
             <span className="font-bold text-slate-700">
-              {fmt(minZ)} - {fmt(maxZ)} ft
+              {fmt(minZ)} - {fmt(maxZ)} m
             </span>
           </div>
         </div>
@@ -167,17 +201,17 @@ export default function MetricsCards({ result }: MetricsCardsProps) {
         <div className="bg-white border border-slate-200 hover:border-emerald-300 transition rounded-2xl p-5 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/50 rounded-full blur-xl pointer-events-none group-hover:scale-110 transition" />
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Optimal Target Z</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Optimal Grade</span>
             <Compass className="w-5 h-5 text-[#36ADA3]" />
           </div>
           <div className="mt-2">
             <span className="text-2xl font-black text-[#36ADA3]">{fmt(optimalTargetZ)}</span>
-            <span className="text-xs text-[#36ADA3] font-bold ml-1">FT</span>
+            <span className="text-xs text-[#36ADA3] font-bold ml-1">m</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>Grade Deviation:</span>
-            <span className="font-bold text-[#36ADA3]">
-              {fmt(optimalTargetZ - avgGroundHeight)} ft
+            <span>Slope configuration:</span>
+            <span className="font-extrabold text-[#36ADA3] uppercase text-[9px] bg-[#36ADA3]/10 px-1.5 py-0.5 rounded border border-[#36ADA3]/25">
+              {optimalSlopeAngleDeg > 0 ? `${optimalSlopeAngleDeg.toFixed(1)}° @ ${optimalSlopeDirectionDeg}°` : 'Flat (0°)'}
             </span>
           </div>
         </div>

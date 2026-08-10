@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import {
-  ScatterChart,
+  ComposedChart,
   Scatter,
+  Line,
   XAxis,
   YAxis,
   ZAxis,
@@ -17,47 +18,57 @@ import { Maximize2, Minimize2 } from 'lucide-react';
 
 interface ScatterPlotProps {
   data: CutFillDetail[];
+  optimalTargetZ: number;
+  optimalSlopeY: number;
 }
 
-export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
+export default function SpatialScatterPlot({
+  data,
+  optimalTargetZ,
+  optimalSlopeY,
+}: ScatterPlotProps) {
   const [isMaximized, setIsMaximized] = useState(false);
 
   if (!data || data.length === 0) {
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-6 h-96 flex items-center justify-center text-slate-500 text-sm">
-        No coordinate data available for spatial scatter plotting.
+        No coordinate data available for profile plotting.
       </div>
     );
   }
 
-  // Find min/max Z to compute color gradients
-  let minZ = Infinity;
-  let maxZ = -Infinity;
-  for (const p of data) {
-    if (p.z < minZ) minZ = p.z;
-    if (p.z > maxZ) maxZ = p.z;
-  }
-  const zRange = maxZ - minZ || 1.0;
+  // Sort data by Y (Northing) so that lines draw continuously from left to right along Y axis
+  const sortedData = [...data].sort((a, b) => a.y - b.y);
 
-  // Helper to map normalized Z to a high-end terrain gradient: Deep Indigo (#112E81) to Bright Emerald (#36ADA3)
-  const getElevationColor = (z: number) => {
-    const norm = (z - minZ) / zRange; // 0 to 1
-    const r = Math.round(17 + norm * (54 - 17));
-    const g = Math.round(46 + norm * (173 - 46));
-    const b = Math.round(129 + norm * (163 - 129));
-    return `rgb(${r}, ${g}, ${b})`;
+  // Find Northing (Y) center to calculate the sloped profile line projection
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of data) {
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const yc = (minY + maxY) / 2;
+
+  // Helper to color points by grading status
+  const getPointColor = (depthType: 'cut' | 'fill' | 'grade') => {
+    if (depthType === 'cut') return '#dc2626'; // Red
+    if (depthType === 'fill') return '#112E81'; // Blue
+    return '#36ADA3'; // Green
   };
 
   // Format data for Recharts
-  const chartData = data.map((p) => ({
+  const chartData = sortedData.map((p) => ({
     x: p.x,
-    y: p.y,
-    z: p.z,
+    y: p.y, // This is plotted on the horizontal axis (Northing Y)
+    z: p.z, // This is the elevation plotted on Y-axis (Elevation Z)
     pointId: p.pointId,
     cutDepth: p.cutDepth,
     fillDepth: p.fillDepth,
     depthType: p.depthType,
-    color: getElevationColor(p.z),
+    // Sloped Target Z line projected along the Y axis (where x = xc)
+    targetZ: optimalTargetZ + optimalSlopeY * (p.y - yc),
+    flatTargetZ: p.flatTargetZ, // Flat Target Z line value
+    color: getPointColor(p.depthType),
   }));
 
   // Custom Tooltip Component
@@ -76,18 +87,21 @@ export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
               {dataPoint.depthType}
             </span>
           </div>
-          <div><span className="text-slate-400 font-semibold uppercase">Easting (X):</span> <span className="font-mono text-slate-800">{dataPoint.x.toLocaleString()} ft</span></div>
-          <div><span className="text-slate-400 font-semibold uppercase">Northing (Y):</span> <span className="font-mono text-slate-800">{dataPoint.y.toLocaleString()} ft</span></div>
-          <div><span className="text-slate-400 font-semibold uppercase">Elevation (Z):</span> <span className="font-mono text-[#36ADA3] font-bold">{dataPoint.z.toFixed(2)} ft</span></div>
-          
+          <div><span className="text-slate-400 font-semibold uppercase">Easting (X):</span> <span className="font-mono text-slate-800">{dataPoint.x.toFixed(1)} m</span></div>
+          <div><span className="text-slate-400 font-semibold uppercase">Northing (Y):</span> <span className="font-mono text-slate-800">{dataPoint.y.toFixed(1)} m</span></div>
+          <div><span className="text-slate-400 font-semibold uppercase">Elevation (Z):</span> <span className="font-mono text-slate-900 font-bold">{dataPoint.z.toFixed(2)} m</span></div>
+          <div className="border-t border-slate-100 pt-1.5 space-y-1">
+            <div><span className="text-slate-400 font-semibold uppercase">Sloped Target:</span> <span className="font-mono text-[#36ADA3] font-bold">{dataPoint.targetZ.toFixed(2)} m</span></div>
+            <div><span className="text-slate-400 font-semibold uppercase">Flat Target:</span> <span className="font-mono text-slate-500">{dataPoint.flatTargetZ.toFixed(2)} m</span></div>
+          </div>
           {dataPoint.cutDepth > 0 && (
-            <div className="text-red-600 font-bold mt-1 border-t border-slate-100 pt-1.5">
-              Cut Depth: {dataPoint.cutDepth.toFixed(2)} ft
+            <div className="text-red-600 font-extrabold text-[10px] mt-1">
+              Excavation (Cut): {dataPoint.cutDepth.toFixed(2)} m
             </div>
           )}
           {dataPoint.fillDepth > 0 && (
-            <div className="text-[#112E81] font-bold mt-1 border-t border-slate-100 pt-1.5">
-              Fill Depth: {dataPoint.fillDepth.toFixed(2)} ft
+            <div className="text-[#112E81] font-extrabold text-[10px] mt-1">
+              Embankment (Fill): {dataPoint.fillDepth.toFixed(2)} m
             </div>
           )}
         </div>
@@ -98,45 +112,72 @@ export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
 
   const renderChart = () => (
     <ResponsiveContainer width="100%" height="100%">
-      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
+      <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
         <XAxis
           type="number"
-          dataKey="x"
-          name="Easting"
-          unit="ft"
+          dataKey="y"
+          name="Northing"
+          unit="m"
           stroke="#475569"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           domain={['autoGrid', 'autoGrid']}
+          label={{ value: 'Northing (Y) (m)', position: 'insideBottom', offset: -10, fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
         />
         <YAxis
           type="number"
-          dataKey="y"
-          name="Northing"
-          unit="ft"
+          dataKey="z"
+          name="Elevation"
+          unit="m"
           stroke="#475569"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           domain={['autoGrid', 'autoGrid']}
+          label={{ value: 'Elevation (Z) (m)', angle: -90, position: 'insideLeft', offset: 0, fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
         />
-        <ZAxis type="number" range={[100, 350]} />
+        <ZAxis type="number" range={[64, 64]} />
+        
+        {/* Flat Target Z Reference Line */}
+        <Line
+          type="linear"
+          dataKey="flatTargetZ"
+          stroke="#94a3b8"
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          dot={false}
+          activeDot={false}
+          name="Flat Target Grade"
+        />
+
+        {/* Sloped Target Z Reference Line */}
+        <Line
+          type="linear"
+          dataKey="targetZ"
+          stroke="#36ADA3"
+          strokeWidth={3}
+          dot={false}
+          activeDot={false}
+          name="Sloped Target Grade"
+        />
+
         <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(0,0,0,0.1)' }} />
-        <Scatter name="Survey Points" data={chartData}>
+        
+        <Scatter name="Survey Points" dataKey="z">
           {chartData.map((entry, index) => (
             <Cell
               key={`cell-${index}`}
               fill={entry.color}
               style={{
-                filter: `drop-shadow(0 3px 6px ${entry.color}55)`,
+                filter: `drop-shadow(0 2px 4px ${entry.color}44)`,
                 cursor: 'pointer',
               }}
             />
           ))}
         </Scatter>
-      </ScatterChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 
@@ -145,20 +186,32 @@ export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
       <div id="recharts-scatter-plot-container" className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-full space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">XY Spatial Plot</h3>
-            <p className="text-xs text-slate-500">Spatial distribution of coordinates (X vs Y). Colored by elevation.</p>
+            <h3 className="text-base font-bold text-slate-900">2D Profile View (Z vs Y)</h3>
+            <p className="text-xs text-slate-500">Elevation profile along Northing axis. Displays flat and sloped target grades.</p>
           </div>
           
           <div className="flex items-center gap-3.5">
-            {/* Legend */}
-            <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#112E81]" />
-                <span>Low ({minZ.toFixed(1)} ft)</span>
+            {/* Custom Legend */}
+            <div className="flex flex-wrap items-center gap-3.5 text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#dc2626]" />
+                <span>Cut</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#36ADA3]" />
-                <span>High ({maxZ.toFixed(1)} ft)</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#112E81]" />
+                <span>Fill</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#36ADA3]" />
+                <span>Grade</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 border-t-2 border-dashed border-[#94a3b8]" />
+                <span>Flat Grade</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 border-t-2 border-[#36ADA3]" />
+                <span>Sloped Grade</span>
               </div>
             </div>
 
@@ -183,8 +236,8 @@ export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
           <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">XY Spatial Plot (Full Screen)</h3>
-                <p className="text-xs text-slate-500">Spatial distribution of coordinates (X vs Y). Colored by elevation.</p>
+                <h3 className="text-lg font-bold text-slate-900">2D Profile View (Z vs Y) (Full Screen)</h3>
+                <p className="text-xs text-slate-500">Elevation profile along Northing axis. Displays flat and sloped target grades.</p>
               </div>
               <button
                 onClick={() => setIsMaximized(false)}

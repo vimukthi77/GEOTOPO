@@ -72,9 +72,9 @@ export default function DashboardPage() {
           targetZ: activeResult.optimalTargetZ,
           gridArea,
           metrics: {
-            totalCutVolume: activeResult.totalCutVolumeCf,
-            totalFillVolume: activeResult.totalFillVolumeCf,
-            netBalance: activeResult.netBalanceCf,
+            totalCutVolume: activeResult.totalCutVolumeM3,
+            totalFillVolume: activeResult.totalFillVolumeM3,
+            netBalance: activeResult.netBalanceM3,
             avgGroundHeight: activeResult.avgGroundHeight,
           },
         }),
@@ -118,7 +118,7 @@ export default function DashboardPage() {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         doc.setTextColor(17, 46, 129); // #112E81
-        doc.text(`Survey Optimization Report: XY Spatial Plot`, 30, 30);
+        doc.text(`Survey Optimization Report: 2D Profile View (Z vs Y)`, 30, 30);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139);
@@ -142,7 +142,7 @@ export default function DashboardPage() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Zone: ${zone} • Area: ${area} • Target Elevation Z: ${activeResult.optimalTargetZ.toFixed(2)} ft`, 30, 45);
+        doc.text(`Zone: ${zone} • Area: ${area} • Target Elevation Z: ${activeResult.optimalTargetZ.toFixed(2)} m`, 30, 45);
         
         const imgWidth = pdfWidth - 60;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -372,10 +372,19 @@ export default function DashboardPage() {
                     /* Visual Analysis: XY Scatter and Plotly 3D Terrain */
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[460px]">
                       <div className="h-full">
-                        <SpatialScatterPlot data={activeResult.details} />
+                        <SpatialScatterPlot
+                          data={activeResult.details}
+                          optimalTargetZ={activeResult.optimalTargetZ}
+                          optimalSlopeY={activeResult.optimalSlopeY}
+                        />
                       </div>
                       <div className="h-full">
-                        <TerrainMap data={activeResult.details} targetZ={activeResult.optimalTargetZ} />
+                        <TerrainMap
+                          data={activeResult.details}
+                          targetZ={activeResult.optimalTargetZ}
+                          optimalSlopeX={activeResult.optimalSlopeX}
+                          optimalSlopeY={activeResult.optimalSlopeY}
+                        />
                       </div>
                     </div>
                   ) : (
@@ -388,8 +397,8 @@ export default function DashboardPage() {
                             <th className="pb-3">Easting (X)</th>
                             <th className="pb-3">Northing (Y)</th>
                             <th className="pb-3">Elevation (Z)</th>
-                            <th className="pb-3">Cut Depth (ft)</th>
-                            <th className="pb-3">Fill Depth (ft)</th>
+                            <th className="pb-3">Cut Depth (m)</th>
+                            <th className="pb-3">Fill Depth (m)</th>
                             <th className="pb-3 pr-2 text-right">Status</th>
                           </tr>
                         </thead>
@@ -433,7 +442,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-xl font-bold text-[#112E81]">Survey Grading Optimization Report</h2>
               <p className="text-xs text-slate-500">{zone} - {area} • {points.length} Coordinate Points</p>
-              <p className="text-xs text-slate-500">Optimal Target Z: {activeResult.optimalTargetZ.toFixed(2)} ft • Average Height: {activeResult.avgGroundHeight.toFixed(2)} ft</p>
+              <p className="text-xs text-slate-500">Optimal Target Z: {activeResult.optimalTargetZ.toFixed(2)} m • Average Height: {activeResult.avgGroundHeight.toFixed(2)} m</p>
             </div>
             <table className="w-full text-left text-xs border-collapse border border-slate-200">
               <thead>
@@ -442,8 +451,8 @@ export default function DashboardPage() {
                   <th className="p-2 border-r border-slate-200">Easting (X)</th>
                   <th className="p-2 border-r border-slate-200">Northing (Y)</th>
                   <th className="p-2 border-r border-slate-200">Elevation (Z)</th>
-                  <th className="p-2 border-r border-slate-200">Cut Depth (ft)</th>
-                  <th className="p-2 border-r border-slate-200">Fill Depth (ft)</th>
+                  <th className="p-2 border-r border-slate-200">Cut Depth (m)</th>
+                  <th className="p-2 border-r border-slate-200">Fill Depth (m)</th>
                   <th className="p-2">Status</th>
                 </tr>
               </thead>

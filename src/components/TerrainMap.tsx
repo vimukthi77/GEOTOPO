@@ -19,9 +19,16 @@ const PlotlyTerrainMap = dynamic(() => import('./PlotlyTerrainMap'), {
 interface TerrainMapProps {
   data: CutFillDetail[];
   targetZ: number;
+  optimalSlopeX: number;
+  optimalSlopeY: number;
 }
 
-export default function TerrainMap({ data, targetZ }: TerrainMapProps) {
+export default function TerrainMap({
+  data,
+  targetZ,
+  optimalSlopeX,
+  optimalSlopeY,
+}: TerrainMapProps) {
   const [isMaximized, setIsMaximized] = useState(false);
 
   return (
@@ -43,7 +50,12 @@ export default function TerrainMap({ data, targetZ }: TerrainMapProps) {
           </button>
         </div>
         <div className="flex-1 w-full min-h-[400px]">
-          <PlotlyTerrainMap data={data} targetZ={targetZ} />
+          <PlotlyTerrainMap
+            data={data}
+            targetZ={targetZ}
+            optimalSlopeX={optimalSlopeX}
+            optimalSlopeY={optimalSlopeY}
+          />
         </div>
       </div>
 
@@ -67,7 +79,12 @@ export default function TerrainMap({ data, targetZ }: TerrainMapProps) {
               </button>
             </div>
             <div className="flex-1 w-full min-h-0">
-              <PlotlyTerrainMap data={data} targetZ={targetZ} />
+              <PlotlyTerrainMap
+                data={data}
+                targetZ={targetZ}
+                optimalSlopeX={optimalSlopeX}
+                optimalSlopeY={optimalSlopeY}
+              />
             </div>
           </div>
         </div>

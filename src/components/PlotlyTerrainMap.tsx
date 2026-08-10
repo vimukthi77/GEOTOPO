@@ -10,9 +10,16 @@ const Plot = createPlotlyComponent(Plotly);
 interface PlotlyTerrainMapProps {
   data: CutFillDetail[];
   targetZ: number;
+  optimalSlopeX: number;
+  optimalSlopeY: number;
 }
 
-export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProps) {
+export default function PlotlyTerrainMap({
+  data,
+  targetZ,
+  optimalSlopeX,
+  optimalSlopeY,
+}: PlotlyTerrainMapProps) {
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center text-slate-500 text-sm">
@@ -40,7 +47,16 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
   
   const planeX = [minX - padX, maxX + padX, maxX + padX, minX - padX];
   const planeY = [minY - padY, minY - padY, maxY + padY, maxY + padY];
-  const planeZ = [targetZ, targetZ, targetZ, targetZ];
+  
+  const xc = (minX + maxX) / 2;
+  const yc = (minY + maxY) / 2;
+  const zAt = (x: number, y: number) => targetZ + optimalSlopeX * (x - xc) + optimalSlopeY * (y - yc);
+  const planeZ = [
+    zAt(minX - padX, minY - padY),
+    zAt(maxX + padX, minY - padY),
+    zAt(maxX + padX, maxY + padY),
+    zAt(minX - padX, maxY + padY),
+  ];
 
   // Map points to Plotly scatter traces
   // Divide data into cut, fill, and grade for separate color/label trace control
@@ -55,7 +71,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
     mode: 'markers',
     name: 'Cut (Excavation)',
     type: 'scatter3d',
-    text: cutPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} ft<br>Cut Depth: ${p.cutDepth.toFixed(2)} ft`),
+    text: cutPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>Cut Depth: ${p.cutDepth.toFixed(2)} m`),
     hoverinfo: 'text',
     marker: {
       color: '#dc2626',
@@ -76,7 +92,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
     mode: 'markers',
     name: 'Fill (Embankment)',
     type: 'scatter3d',
-    text: fillPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} ft<br>Fill Depth: ${p.fillDepth.toFixed(2)} ft`),
+    text: fillPoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>Fill Depth: ${p.fillDepth.toFixed(2)} m`),
     hoverinfo: 'text',
     marker: {
       color: '#112E81',
@@ -97,7 +113,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
     mode: 'markers',
     name: 'At Grade',
     type: 'scatter3d',
-    text: gradePoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} ft<br>On Grade`),
+    text: gradePoints.map(p => `Pt ${p.pointId}<br>Elev: ${p.z.toFixed(2)} m<br>On Grade`),
     hoverinfo: 'text',
     marker: {
       color: '#36ADA3',
@@ -122,7 +138,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
     k: [2, 3],
     color: '#36ADA3',
     opacity: 0.2,
-    name: `Target Grade (${targetZ.toFixed(2)} ft)`,
+    name: 'Target Grade Plane (m)',
     showlegend: true,
     hoverinfo: 'skip'
   };
@@ -159,21 +175,21 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
           margin: { l: 0, r: 0, b: 0, t: 0 },
           scene: {
             xaxis: {
-              title: { text: 'Easting (X)', font: { color: '#334155', size: 10 } },
+              title: { text: 'Easting (X) (m)', font: { color: '#334155', size: 10 } },
               gridcolor: 'rgba(0,0,0,0.15)',
               zerolinecolor: 'rgba(0,0,0,0.15)',
               backgroundcolor: 'rgba(0,0,0,0)',
               tickfont: { color: '#475569', size: 9 },
             },
             yaxis: {
-              title: { text: 'Northing (Y)', font: { color: '#334155', size: 10 } },
+              title: { text: 'Northing (Y) (m)', font: { color: '#334155', size: 10 } },
               gridcolor: 'rgba(0,0,0,0.15)',
               zerolinecolor: 'rgba(0,0,0,0.15)',
               backgroundcolor: 'rgba(0,0,0,0)',
               tickfont: { color: '#475569', size: 9 },
             },
             zaxis: {
-              title: { text: 'Elevation (Z)', font: { color: '#334155', size: 10 } },
+              title: { text: 'Elevation (Z) (m)', font: { color: '#334155', size: 10 } },
               gridcolor: 'rgba(0,0,0,0.15)',
               zerolinecolor: 'rgba(0,0,0,0.15)',
               backgroundcolor: 'rgba(0,0,0,0)',

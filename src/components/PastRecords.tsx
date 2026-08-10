@@ -146,8 +146,8 @@ export default function PastRecords({ onLoadRecord, refreshTrigger }: PastRecord
               hour: '2-digit',
               minute: '2-digit',
             });
-            const netCy = rec.metrics.netBalance / 27;
-            const absoluteNet = Math.abs(netCy);
+            const netM3 = rec.metrics.netBalance;
+            const absoluteNet = Math.abs(netM3);
 
             return (
               <div
@@ -166,7 +166,7 @@ export default function PastRecords({ onLoadRecord, refreshTrigger }: PastRecord
                   <div className="text-[10px] text-slate-600 flex items-center gap-1">
                     <Compass className="w-3.5 h-3.5 text-[#36ADA3]" />
                     <span>Grade Z: </span>
-                    <span className="font-mono text-[#36ADA3] font-bold">{rec.targetZ.toFixed(2)} ft</span>
+                    <span className="font-mono text-[#36ADA3] font-bold">{rec.targetZ.toFixed(2)} m</span>
                   </div>
 
                   <div className="text-[9px] text-slate-400 flex items-center gap-1">
@@ -179,10 +179,10 @@ export default function PastRecords({ onLoadRecord, refreshTrigger }: PastRecord
                   <div className="text-right">
                     <div className="text-xs font-black text-slate-800">
                       {absoluteNet.toLocaleString(undefined, { maximumFractionDigits: 1 })}{' '}
-                      <span className="text-[9px] text-slate-500">CY</span>
+                      <span className="text-[9px] text-slate-500">m³</span>
                     </div>
                     <div className="text-[9px] text-slate-500 uppercase tracking-wide">
-                      {netCy > 0 ? 'Surplus' : 'Deficit'}
+                      {netM3 > 0 ? 'Surplus' : 'Deficit'}
                     </div>
                   </div>
 
