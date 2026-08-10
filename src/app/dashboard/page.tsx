@@ -10,7 +10,7 @@ import PastRecords from '@/components/PastRecords';
 import { optimizeTargetGrade, OptimizationResult, SurveyPointData } from '@/lib/optimization';
 import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
 export default function DashboardPage() {
   const [activeResult, setActiveResult] = useState<OptimizationResult | null>(null);
