@@ -1,0 +1,306 @@
+'use client';
+
+import React, { useState } from 'react';
+import Navbar from '@/components/Navbar';
+import SurveyInput from '@/components/SurveyInput';
+import MetricsCards from '@/components/MetricsCards';
+import SpatialScatterPlot from '@/components/ScatterPlot';
+import TerrainMap from '@/components/TerrainMap';
+import PastRecords from '@/components/PastRecords';
+import { optimizeTargetGrade, OptimizationResult, SurveyPointData } from '@/lib/optimization';
+import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark } from 'lucide-react';
+
+export default function DashboardPage() {
+  const [activeResult, setActiveResult] = useState<OptimizationResult | null>(null);
+  
+  // Survey Metadata for current session
+  const [zone, setZone] = useState('');
+  const [area, setArea] = useState('');
+  const [points, setPoints] = useState<SurveyPointData[]>([]);
+  const [gridArea, setGridArea] = useState(0);
+
+  // Operation states
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [loadingRecord, setLoadingRecord] = useState(false);
+  
+  // History panel reload trigger
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Tab state: 'visuals' | 'table'
+  const [activeTab, setActiveTab] = useState<'visuals' | 'table'>('visuals');
+
+  // Callback when survey coordinates are paste-processed or uploaded
+  const handleDataParsed = (data: {
+    zone: string;
+    area: string;
+    points: SurveyPointData[];
+    customGridArea?: number;
+  }) => {
+    setZone(data.zone);
+    setArea(data.area);
+    setPoints(data.points);
+    setSaveSuccess('');
+    setSaveError('');
+
+    // Execute Earthwork Bisection Optimization
+    const result = optimizeTargetGrade(data.points, data.customGridArea);
+    setActiveResult(result);
+    setGridArea(result.gridArea);
+  };
+
+  // Save current optimized model to MongoDB
+  const handleSaveToDatabase = async () => {
+    if (!activeResult || points.length === 0) return;
+
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess('');
+
+    try {
+      const res = await fetch('/api/survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zone,
+          area,
+          points,
+          targetZ: activeResult.optimalTargetZ,
+          gridArea,
+          metrics: {
+            totalCutVolume: activeResult.totalCutVolumeCf,
+            totalFillVolume: activeResult.totalFillVolumeCf,
+            netBalance: activeResult.netBalanceCf,
+            avgGroundHeight: activeResult.avgGroundHeight,
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save survey record to database');
+      }
+
+      setSaveSuccess(`Survey grading model for ${zone} - ${area} saved successfully.`);
+      setRefreshTrigger((prev) => prev + 1); // Refresh Sidebar listing
+    } catch (err: any) {
+      setSaveError(err.message || 'Error occurred while saving to MongoDB.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Load a historical survey run from MongoDB history panel
+  const handleLoadRecord = async (id: string) => {
+    setLoadingRecord(true);
+    setSaveError('');
+    setSaveSuccess('');
+    try {
+      const res = await fetch(`/api/survey?id=${id}`);
+      if (!res.ok) {
+        throw new Error('Failed to load past survey record');
+      }
+
+      const data = await res.json();
+      const survey = data.survey;
+
+      if (!survey) {
+        throw new Error('Survey record is empty');
+      }
+
+      setZone(survey.zone);
+      setArea(survey.area);
+      setPoints(survey.points);
+      setGridArea(survey.gridArea);
+
+      // Re-run the optimizer dynamically to re-populate the details arrays
+      const result = optimizeTargetGrade(survey.points, survey.gridArea);
+      setActiveResult(result);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed loading survey run.');
+    } finally {
+      setLoadingRecord(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+      <Navbar />
+
+      <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              Earthwork Cut & Fill Optimization
+            </h1>
+            <p className="text-slate-500 mt-1 text-sm">
+              Compute optimal site grading levels, minimize export/import volumes, and visualize coordinates.
+            </p>
+          </div>
+
+          {activeResult && (
+            <button
+              onClick={handleSaveToDatabase}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#36ADA3] to-teal-600 hover:from-teal-500 hover:to-[#36ADA3] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving to Cloud...
+                </>
+              ) : (
+                <>
+                  <Database className="w-4 h-4" />
+                  Save Survey Run
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Top level alerts */}
+        {saveError && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-start gap-3 text-sm shadow">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <span>{saveError}</span>
+          </div>
+        )}
+
+        {saveSuccess && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-start gap-3 text-sm shadow">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>{saveSuccess}</span>
+          </div>
+        )}
+
+        {/* Master Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+          {/* Inputs Section */}
+          <div className="lg:col-span-1 space-y-6">
+            <SurveyInput onDataParsed={handleDataParsed} />
+            <PastRecords onLoadRecord={handleLoadRecord} refreshTrigger={refreshTrigger} />
+          </div>
+
+          {/* Metrics & Plots Section */}
+          <div className="lg:col-span-3 space-y-6">
+            {loadingRecord ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-20 flex flex-col items-center justify-center gap-3 text-slate-500 shadow-sm min-h-[500px]">
+                <Loader2 className="w-10 h-10 animate-spin text-[#112E81]" />
+                <span className="font-semibold tracking-wide">Loading Survey Dataset...</span>
+              </div>
+            ) : !activeResult ? (
+              <div className="bg-white border border-slate-200 border-dashed rounded-3xl p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[500px] text-slate-500 space-y-4">
+                <div className="p-4 bg-[#112E81]/5 rounded-3xl border border-[#112E81]/10">
+                  <Landmark className="w-12 h-12 text-[#112E81]/80" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">No Active Survey Grading Model</h3>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto">
+                    Upload an Excel file or paste CSV coordinate rows in the left sidebar to run the bisection balance algorithm.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Metric Indicators */}
+                <MetricsCards result={activeResult} />
+
+                {/* Dashboard Tabs */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 text-xs font-black bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20 rounded">
+                        {zone}
+                      </span>
+                      <span className="text-xs text-slate-600 font-extrabold uppercase">{area}</span>
+                      <span className="text-xs text-slate-400">• {points.length} coordinates loaded</span>
+                    </div>
+
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <button
+                        onClick={() => setActiveTab('visuals')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          activeTab === 'visuals' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Map className="w-3.5 h-3.5" />
+                        Visual Maps
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('table')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          activeTab === 'table' ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Table className="w-3.5 h-3.5" />
+                        Details Table
+                      </button>
+                    </div>
+                  </div>
+
+                  {activeTab === 'visuals' ? (
+                    /* Visual Analysis: XY Scatter and Plotly 3D Terrain */
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[460px]">
+                      <div className="h-full">
+                        <SpatialScatterPlot data={activeResult.details} />
+                      </div>
+                      <div className="h-full">
+                        <TerrainMap data={activeResult.details} targetZ={activeResult.optimalTargetZ} />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Tabular coordinate inspection list */
+                    <div className="overflow-x-auto max-h-[460px] overflow-y-auto pr-1">
+                      <table className="w-full text-left text-xs border-collapse text-slate-700">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wide">
+                            <th className="pb-3 pl-2">Point ID</th>
+                            <th className="pb-3">Easting (X)</th>
+                            <th className="pb-3">Northing (Y)</th>
+                            <th className="pb-3">Elevation (Z)</th>
+                            <th className="pb-3">Cut Depth (ft)</th>
+                            <th className="pb-3">Fill Depth (ft)</th>
+                            <th className="pb-3 pr-2 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-mono">
+                          {activeResult.details.map((p) => (
+                            <tr key={p.pointId} className="hover:bg-slate-50 transition">
+                              <td className="py-2.5 pl-2 font-bold text-slate-900">{p.pointId}</td>
+                              <td className="py-2.5">{p.x.toFixed(1)}</td>
+                              <td className="py-2.5">{p.y.toFixed(1)}</td>
+                              <td className="py-2.5 font-bold text-slate-850">{p.z.toFixed(2)}</td>
+                              <td className="py-2.5 text-red-600">{p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-'}</td>
+                              <td className="py-2.5 text-[#112E81]">{p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-'}</td>
+                              <td className="py-2.5 pr-2 text-right">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                    p.depthType === 'cut'
+                                      ? 'bg-red-50 text-red-700 border border-red-250'
+                                      : p.depthType === 'fill'
+                                      ? 'bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20'
+                                      : 'bg-[#36ADA3]/10 text-[#36ADA3] border border-[#36ADA3]/20'
+                                  }`}
+                                >
+                                  {p.depthType}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
