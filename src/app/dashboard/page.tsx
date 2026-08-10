@@ -8,7 +8,9 @@ import SpatialScatterPlot from '@/components/ScatterPlot';
 import TerrainMap from '@/components/TerrainMap';
 import PastRecords from '@/components/PastRecords';
 import { optimizeTargetGrade, OptimizationResult, SurveyPointData } from '@/lib/optimization';
-import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark } from 'lucide-react';
+import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function DashboardPage() {
   const [activeResult, setActiveResult] = useState<OptimizationResult | null>(null);
@@ -24,6 +26,7 @@ export default function DashboardPage() {
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [loadingRecord, setLoadingRecord] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   
   // History panel reload trigger
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -92,6 +95,109 @@ export default function DashboardPage() {
     }
   };
 
+  // Export current visuals and coordinate details to a multi-page PDF
+  const handleExportPDF = async () => {
+    if (!activeResult) return;
+    setExportingPDF(true);
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: 'a4'
+      });
+
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+
+      // Page 1: Scatter Plot
+      const scatterEl = document.getElementById('recharts-scatter-plot-container');
+      if (scatterEl) {
+        const canvas = await html2canvas(scatterEl, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(17, 46, 129); // #112E81
+        doc.text(`Survey Optimization Report: XY Spatial Plot`, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Zone: ${zone} • Area: ${area} • Generated: ${new Date().toLocaleString()}`, 30, 45);
+        
+        const imgWidth = pdfWidth - 60;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        doc.addImage(imgData, 'PNG', 30, 60, imgWidth, Math.min(imgHeight, pdfHeight - 80));
+      }
+
+      // Page 2: 3D Topography Mesh
+      doc.addPage();
+      const terrainEl = document.getElementById('plotly-terrain-map-container');
+      if (terrainEl) {
+        const canvas = await html2canvas(terrainEl, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(17, 46, 129); // #112E81
+        doc.text(`Survey Optimization Report: 3D Topography Mesh`, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Zone: ${zone} • Area: ${area} • Target Elevation Z: ${activeResult.optimalTargetZ.toFixed(2)} ft`, 30, 45);
+        
+        const imgWidth = pdfWidth - 60;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        doc.addImage(imgData, 'PNG', 30, 60, imgWidth, Math.min(imgHeight, pdfHeight - 80));
+      }
+
+      // Page 3+: Details Table in Portrait
+      doc.addPage('a4', 'portrait');
+      
+      const printTableEl = document.getElementById('pdf-print-table-container');
+      if (printTableEl) {
+        const canvas = await html2canvas(printTableEl, { scale: 2 });
+        const imgWidth = doc.internal.pageSize.getWidth() - 40;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        
+        const sliceCanvas = (cv: HTMLCanvasElement, startY: number, height: number) => {
+          const slice = document.createElement('canvas');
+          slice.width = cv.width;
+          slice.height = Math.min(height, cv.height - startY);
+          const ctx = slice.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(cv, 0, startY, cv.width, slice.height, 0, 0, cv.width, slice.height);
+          }
+          return slice;
+        };
+
+        const pxPageHeight = (canvas.width * (pageHeight - 40)) / imgWidth;
+        let startY = 0;
+        let isFirstTablePage = true;
+
+        while (startY < canvas.height) {
+          if (!isFirstTablePage) {
+            doc.addPage('a4', 'portrait');
+          }
+          const slice = sliceCanvas(canvas, startY, pxPageHeight);
+          const sliceData = slice.toDataURL('image/png');
+          const sliceWidth = imgWidth;
+          const sliceHeight = (slice.height * imgWidth) / canvas.width;
+          
+          doc.addImage(sliceData, 'PNG', 20, 20, sliceWidth, sliceHeight);
+          startY += pxPageHeight;
+          isFirstTablePage = false;
+        }
+      }
+
+      doc.save(`Survey_Grading_Report_${zone}_${area}.pdf`);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   // Load a historical survey run from MongoDB history panel
   const handleLoadRecord = async (id: string) => {
     setLoadingRecord(true);
@@ -142,23 +248,43 @@ export default function DashboardPage() {
           </div>
 
           {activeResult && (
-            <button
-              onClick={handleSaveToDatabase}
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#36ADA3] to-teal-600 hover:from-teal-500 hover:to-[#36ADA3] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Saving to Cloud...
-                </>
-              ) : (
-                <>
-                  <Database className="w-4 h-4" />
-                  Save Survey Run
-                </>
-              )}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleExportPDF}
+                disabled={exportingPDF}
+                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#112E81] to-[#1d4ed8] hover:from-[#1d4ed8] hover:to-[#112E81] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
+              >
+                {exportingPDF ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4" />
+                    Export Survey PDF
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleSaveToDatabase}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#36ADA3] to-teal-600 hover:from-teal-500 hover:to-[#36ADA3] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving to Cloud...
+                  </>
+                ) : (
+                  <>
+                    <Database className="w-4 h-4" />
+                    Save Survey Run
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
 
@@ -300,6 +426,43 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Off-screen Container for PDF Export */}
+        {activeResult && (
+          <div id="pdf-print-table-container" className="absolute -left-[9999px] top-0 bg-white p-8 w-[800px] font-sans text-slate-800 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-[#112E81]">Survey Grading Optimization Report</h2>
+              <p className="text-xs text-slate-500">{zone} - {area} • {points.length} Coordinate Points</p>
+              <p className="text-xs text-slate-500">Optimal Target Z: {activeResult.optimalTargetZ.toFixed(2)} ft • Average Height: {activeResult.avgGroundHeight.toFixed(2)} ft</p>
+            </div>
+            <table className="w-full text-left text-xs border-collapse border border-slate-200">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-200 font-bold text-slate-700">
+                  <th className="p-2 border-r border-slate-200">Point ID</th>
+                  <th className="p-2 border-r border-slate-200">Easting (X)</th>
+                  <th className="p-2 border-r border-slate-200">Northing (Y)</th>
+                  <th className="p-2 border-r border-slate-200">Elevation (Z)</th>
+                  <th className="p-2 border-r border-slate-200">Cut Depth (ft)</th>
+                  <th className="p-2 border-r border-slate-200">Fill Depth (ft)</th>
+                  <th className="p-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-mono">
+                {activeResult.details.map((p) => (
+                  <tr key={p.pointId} className="border-b border-slate-150">
+                    <td className="p-2 border-r border-slate-200 font-bold text-slate-900">{p.pointId}</td>
+                    <td className="p-2 border-r border-slate-200">{p.x.toFixed(1)}</td>
+                    <td className="p-2 border-r border-slate-200">{p.y.toFixed(1)}</td>
+                    <td className="p-2 border-r border-slate-200">{p.z.toFixed(2)}</td>
+                    <td className="p-2 border-r border-slate-200 text-red-600">{p.cutDepth > 0 ? p.cutDepth.toFixed(2) : '-'}</td>
+                    <td className="p-2 border-r border-slate-200 text-[#112E81]">{p.fillDepth > 0 ? p.fillDepth.toFixed(2) : '-'}</td>
+                    <td className="p-2 uppercase font-bold text-[10px]">{p.depthType}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
     </div>
   );

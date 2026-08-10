@@ -142,7 +142,7 @@ export default function SpatialScatterPlot({ data }: ScatterPlotProps) {
 
   return (
     <>
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-full space-y-4">
+      <div id="recharts-scatter-plot-container" className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-full space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-slate-900">XY Spatial Plot</h3>

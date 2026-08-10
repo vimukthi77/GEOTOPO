@@ -149,7 +149,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
   ];
 
   return (
-    <div className="w-full h-full min-h-[400px] rounded-xl overflow-hidden">
+    <div id="plotly-terrain-map-container" className="w-full h-full min-h-[400px] rounded-xl overflow-hidden">
       <Plot
         data={traces}
         layout={{
@@ -194,6 +194,7 @@ export default function PlotlyTerrainMap({ data, targetZ }: PlotlyTerrainMapProp
           responsive: true,
           displaylogo: false,
           modeBarButtonsToRemove: ['sendDataToCloud', 'select2d', 'lasso2d'],
+          preserveDrawingBuffer: true,
         }}
         className="w-full h-full"
         style={{ width: '100%', height: '100%' }}
