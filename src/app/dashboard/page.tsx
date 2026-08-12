@@ -20,6 +20,11 @@ export default function DashboardPage() {
   const [area, setArea] = useState('');
   const [points, setPoints] = useState<SurveyPointData[]>([]);
   const [gridArea, setGridArea] = useState(0);
+  
+  // 1D Bar settings
+  const [is1DBarMode, setIs1DBarMode] = useState(true);
+  const [barLength, setBarLength] = useState(20);
+  const [barWidth, setBarWidth] = useState(1);
 
   // Operation states
   const [saving, setSaving] = useState(false);
@@ -43,6 +48,9 @@ export default function DashboardPage() {
     area: string;
     points: SurveyPointData[];
     customGridArea?: number;
+    is1DBarMode?: boolean;
+    barLength?: number;
+    barWidth?: number;
   }) => {
     setZone(data.zone);
     setArea(data.area);
@@ -50,8 +58,16 @@ export default function DashboardPage() {
     setSaveSuccess('');
     setSaveError('');
 
+    const is1D = data.is1DBarMode ?? true;
+    const len = data.barLength ?? 20;
+    const wid = data.barWidth ?? 1;
+
+    setIs1DBarMode(is1D);
+    setBarLength(len);
+    setBarWidth(wid);
+
     // Execute Earthwork Bisection Optimization
-    const result = optimizeTargetGrade(data.points, data.customGridArea);
+    const result = optimizeTargetGrade(data.points, data.customGridArea, is1D, len, wid);
     setActiveResult(result);
     setGridArea(result.gridArea);
   };
@@ -74,6 +90,9 @@ export default function DashboardPage() {
           points,
           targetZ: activeResult.optimalTargetZ,
           gridArea,
+          is1DBarMode,
+          barLength,
+          barWidth,
           metrics: {
             totalCutVolume: activeResult.totalCutVolumeM3,
             totalFillVolume: activeResult.totalFillVolumeM3,
@@ -125,7 +144,7 @@ export default function DashboardPage() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Zone: ${zone} • Area: ${area} • Generated: ${new Date().toLocaleString()}`, 30, 45);
+        doc.text(`Zone: ${zone} • Area: ${area} • Type: ${is1DBarMode ? `1D Bar (${barLength}mx${barWidth}m)` : '2D Area'} • Generated: ${new Date().toLocaleString()}`, 30, 45);
         
         const imgWidth = pdfWidth - 60;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -145,7 +164,7 @@ export default function DashboardPage() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Zone: ${zone} • Area: ${area} • Target Elevation Z: ${activeResult.optimalTargetZ.toFixed(2)} m`, 30, 45);
+        doc.text(`Zone: ${zone} • Area: ${area} • Target Elevation Z: ${activeResult.optimalTargetZ.toFixed(2)} m • Type: ${is1DBarMode ? '1D Bar' : '2D Area'}`, 30, 45);
         
         const imgWidth = pdfWidth - 60;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -224,8 +243,16 @@ export default function DashboardPage() {
       setPoints(survey.points);
       setGridArea(survey.gridArea);
 
+      const is1D = survey.is1DBarMode ?? false;
+      const len = survey.barLength ?? 20;
+      const wid = survey.barWidth ?? 1;
+
+      setIs1DBarMode(is1D);
+      setBarLength(len);
+      setBarWidth(wid);
+
       // Re-run the optimizer dynamically to re-populate the details arrays
-      const result = optimizeTargetGrade(survey.points, survey.gridArea);
+      const result = optimizeTargetGrade(survey.points, survey.gridArea, is1D, len, wid);
       setActiveResult(result);
     } catch (err: any) {
       setSaveError(err.message || 'Failed loading survey run.');
@@ -346,6 +373,9 @@ export default function DashboardPage() {
                         {zone}
                       </span>
                       <span className="text-xs text-slate-600 font-extrabold uppercase">{area}</span>
+                      <span className="px-2.5 py-1 text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-250 rounded">
+                        {is1DBarMode ? `1D Bar (${barLength}m)` : '2D Terrain'}
+                      </span>
                       <span className="text-xs text-slate-400">• {points.length} coordinates loaded</span>
                     </div>
 
@@ -479,7 +509,7 @@ export default function DashboardPage() {
           <div id="pdf-print-table-container" className="absolute -left-[9999px] top-0 bg-white p-8 w-[800px] font-sans text-slate-800 space-y-6">
             <div>
               <h2 className="text-xl font-bold text-[#112E81]">Survey Grading Optimization Report</h2>
-              <p className="text-xs text-slate-500">{zone} - {area} • {points.length} Coordinate Points</p>
+              <p className="text-xs text-slate-500">{zone} - {area} • {points.length} Coordinate Points • Type: {is1DBarMode ? `1D Bar (${barLength}m x ${barWidth}m)` : '2D Area'}</p>
               <p className="text-xs text-slate-500">Optimal Target Z: {activeResult.optimalTargetZ.toFixed(2)} m • Average Height: {activeResult.avgGroundHeight.toFixed(2)} m</p>
             </div>
             <table className="w-full text-left text-xs border-collapse border border-slate-200">

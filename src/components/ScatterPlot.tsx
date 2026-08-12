@@ -37,8 +37,12 @@ export default function SpatialScatterPlot({
     );
   }
 
-  // Sort data by Y (Northing) so that lines draw continuously from left to right along Y axis
-  const sortedData = [...data].sort((a, b) => a.y - b.y);
+  const is1D = data.length > 0 && data[0].distanceAlongBar !== undefined;
+
+  // Sort data by distanceAlongBar if available, otherwise by Y (Northing)
+  const sortedData = [...data].sort((a, b) => 
+    is1D ? (a.distanceAlongBar! - b.distanceAlongBar!) : (a.y - b.y)
+  );
 
   // Find Northing (Y) center to calculate the sloped profile line projection
   let minY = Infinity;
@@ -59,14 +63,14 @@ export default function SpatialScatterPlot({
   // Format data for Recharts
   const chartData = sortedData.map((p) => ({
     x: p.x,
-    y: p.y, // This is plotted on the horizontal axis (Northing Y)
-    z: p.z, // This is the elevation plotted on Y-axis (Elevation Z)
+    y: is1D ? p.distanceAlongBar : p.y, // Plotted on the horizontal axis
+    z: p.z, // Plotted on the vertical axis (Elevation Z)
     pointId: p.pointId,
     cutDepth: p.cutDepth,
     fillDepth: p.fillDepth,
     depthType: p.depthType,
-    // Sloped Target Z line projected along the Y axis (where x = xc)
-    targetZ: optimalTargetZ + optimalSlopeY * (p.y - yc),
+    // Use targetZ directly for 1D mode, project along Y for 2D mode
+    targetZ: is1D ? p.targetZ : (optimalTargetZ + optimalSlopeY * (p.y - yc)),
     flatTargetZ: p.flatTargetZ, // Flat Target Z line value
     color: getPointColor(p.depthType),
   }));
@@ -89,7 +93,9 @@ export default function SpatialScatterPlot({
           </div>
           <div><span className="text-slate-400 font-semibold uppercase">Easting (X):</span> <span className="font-mono text-slate-800">{dataPoint.x.toFixed(1)} m</span></div>
           <div><span className="text-slate-400 font-semibold uppercase">Northing (Y):</span> <span className="font-mono text-slate-800">{dataPoint.y.toFixed(1)} m</span></div>
-          <div><span className="text-slate-400 font-semibold uppercase">Elevation (Z):</span> <span className="font-mono text-slate-900 font-bold">{dataPoint.z.toFixed(2)} m</span></div>
+          {is1D && (
+            <div><span className="text-slate-400 font-semibold uppercase">Dist on Bar:</span> <span className="font-mono text-slate-800 font-bold">{dataPoint.y.toFixed(1)} m</span></div>
+          )}
           <div className="border-t border-slate-100 pt-1.5 space-y-1">
             <div><span className="text-slate-400 font-semibold uppercase">Sloped Target:</span> <span className="font-mono text-[#36ADA3] font-bold">{dataPoint.targetZ.toFixed(2)} m</span></div>
             <div><span className="text-slate-400 font-semibold uppercase">Flat Target:</span> <span className="font-mono text-slate-500">{dataPoint.flatTargetZ.toFixed(2)} m</span></div>
@@ -117,14 +123,14 @@ export default function SpatialScatterPlot({
         <XAxis
           type="number"
           dataKey="y"
-          name="Northing"
+          name={is1D ? "Distance" : "Northing"}
           unit="m"
           stroke="#475569"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           domain={['autoGrid', 'autoGrid']}
-          label={{ value: 'Northing (Y) (m)', position: 'insideBottom', offset: -10, fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
+          label={{ value: is1D ? 'Distance along Bar (m)' : 'Northing (Y) (m)', position: 'insideBottom', offset: -10, fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
         />
         <YAxis
           type="number"

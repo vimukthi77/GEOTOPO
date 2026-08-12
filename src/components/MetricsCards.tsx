@@ -42,9 +42,13 @@ export default function MetricsCards({ result, gradingMode = 'sloped' }: Metrics
     maxZ,
     gridArea,
     details,
+    is1DBarMode,
+    barLength,
+    barWidth,
   } = result;
 
   const isSloped = gradingMode === 'sloped';
+  const is1D = !!is1DBarMode;
 
   // Statistics
   const activeCutVolume = isSloped ? totalCutVolumeM3 : flatCutVolumeM3;
@@ -82,11 +86,11 @@ export default function MetricsCards({ result, gradingMode = 'sloped' }: Metrics
           <div>
             <h4 className="text-sm font-extrabold uppercase tracking-wider text-[#36ADA3] flex items-center gap-1.5">
               <Scale className="w-4 h-4" />
-              Sloped Grading Optimization Savings
+              {is1D ? 'Sloped Bar Leveling Savings' : 'Sloped Grading Optimization Savings'}
             </h4>
             <p className="text-xs text-slate-100 mt-1">
-              By grading at an optimized slope of <span className="font-bold text-white">{optimalSlopeAngleDeg.toFixed(1)}°</span> (directed at <span className="font-bold text-white">{optimalSlopeDirectionDeg}°</span>), 
-              the total earthwork volume was reduced from <span className="font-bold">{fmt(flatTotalVolume)} m³</span> (flat plane) to <span className="font-bold">{fmt(slopedTotalVolume)} m³</span>.
+              By grading at an optimized slope of <span className="font-bold text-white">{optimalSlopeAngleDeg.toFixed(1)}°</span> {!is1D && <> (directed at <span className="font-bold text-white">{optimalSlopeDirectionDeg}°</span>)</>}, 
+              the total earthwork volume was reduced from <span className="font-bold">{fmt(flatTotalVolume)} m³</span> ({is1D ? 'flat bar' : 'flat plane'}) to <span className="font-bold">{fmt(slopedTotalVolume)} m³</span>.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl self-start md:self-center text-center">
@@ -122,7 +126,7 @@ export default function MetricsCards({ result, gradingMode = 'sloped' }: Metrics
             <span className="text-xs text-red-650 font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>Grid Cell Area: {fmt(gridArea)} m²</span>
+            <span>{is1D ? `Bar Width: ${fmt(barWidth || 1)} m` : `Grid Cell Area: ${fmt(gridArea)} m²`}</span>
             <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
               {cutPointsCount} points
             </span>
@@ -141,7 +145,7 @@ export default function MetricsCards({ result, gradingMode = 'sloped' }: Metrics
             <span className="text-xs text-[#112E81] font-bold ml-1">m³</span>
           </div>
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
-            <span>Grid Cell Area: {fmt(gridArea)} m²</span>
+            <span>{is1D ? `Bar Width: ${fmt(barWidth || 1)} m` : `Grid Cell Area: ${fmt(gridArea)} m²`}</span>
             <span className="bg-[#112E81]/10 text-[#112E81] border border-[#112E81]/20 px-1.5 py-0.5 rounded font-bold">
               {fillPointsCount} points
             </span>
@@ -219,7 +223,7 @@ export default function MetricsCards({ result, gradingMode = 'sloped' }: Metrics
           <div className="text-[10px] text-slate-500 mt-2 flex items-center justify-between">
             <span>Slope configuration:</span>
             <span className="font-extrabold text-[#36ADA3] uppercase text-[9px] bg-[#36ADA3]/10 px-1.5 py-0.5 rounded border border-[#36ADA3]/25">
-              {isSloped && optimalSlopeAngleDeg > 0 ? `${optimalSlopeAngleDeg.toFixed(1)}° @ ${optimalSlopeDirectionDeg}°` : 'Flat (0°)'}
+              {isSloped && optimalSlopeAngleDeg > 0 ? (is1D ? `${optimalSlopeAngleDeg.toFixed(1)}°` : `${optimalSlopeAngleDeg.toFixed(1)}° @ ${optimalSlopeDirectionDeg}°`) : 'Flat (0°)'}
             </span>
           </div>
         </div>

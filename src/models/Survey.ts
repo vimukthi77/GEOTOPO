@@ -20,6 +20,9 @@ export interface ISurvey extends Document {
   points: ISurveyPoint[];
   targetZ: number;
   gridArea: number;
+  is1DBarMode?: boolean;
+  barLength?: number;
+  barWidth?: number;
   metrics: ISurveyMetrics;
   createdAt: Date;
 }
@@ -44,6 +47,9 @@ const SurveySchema = new Schema<ISurvey>({
   points: { type: [SurveyPointSchema], required: true },
   targetZ: { type: Number, required: true },
   gridArea: { type: Number, required: true },
+  is1DBarMode: { type: Boolean, default: false },
+  barLength: { type: Number },
+  barWidth: { type: Number },
   metrics: { type: SurveyMetricsSchema, required: true },
   createdAt: { type: Date, default: Date.now, index: true },
 });

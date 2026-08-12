@@ -11,6 +11,9 @@ interface SurveyInputProps {
     area: string;
     points: SurveyPointData[];
     customGridArea?: number;
+    is1DBarMode?: boolean;
+    barLength?: number;
+    barWidth?: number;
   }) => void;
 }
 
@@ -21,7 +24,12 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
   const [zone, setZone] = useState(ZONES[0]);
   const [area, setArea] = useState(AREAS[0]);
   const [pasteData, setPasteData] = useState('');
-  const [customSpacing, setCustomSpacing] = useState(''); // Grid spacing in feet
+  const [customSpacing, setCustomSpacing] = useState(''); // Grid spacing in meters
+  
+  // 1D Bar Mode States
+  const [is1DBarMode, setIs1DBarMode] = useState(true); // Default to true as the primary goal
+  const [barLength, setBarLength] = useState('20');
+  const [barWidth, setBarWidth] = useState('1');
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -87,7 +95,7 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
       }
 
       let customGridArea: number | undefined = undefined;
-      if (customSpacing) {
+      if (!is1DBarMode && customSpacing) {
         const spacing = parseFloat(customSpacing);
         if (isNaN(spacing) || spacing <= 0) {
           throw new Error('Grid spacing must be a positive number.');
@@ -96,11 +104,17 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
         customGridArea = spacing * spacing;
       }
 
+      const len = is1DBarMode ? (parseFloat(barLength) || 20) : 20;
+      const wid = is1DBarMode ? (parseFloat(barWidth) || 1) : 1;
+
       onDataParsed({
         zone,
         area,
         points,
         customGridArea,
+        is1DBarMode,
+        barLength: len,
+        barWidth: wid,
       });
 
       setSuccess(`Successfully parsed ${points.length} survey points!`);
@@ -163,18 +177,24 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
           }
 
           let customGridArea: number | undefined = undefined;
-          if (customSpacing) {
+          if (!is1DBarMode && customSpacing) {
             const spacing = parseFloat(customSpacing);
             if (!isNaN(spacing) && spacing > 0) {
               customGridArea = spacing * spacing;
             }
           }
 
+          const len = is1DBarMode ? (parseFloat(barLength) || 20) : 20;
+          const wid = is1DBarMode ? (parseFloat(barWidth) || 1) : 1;
+
           onDataParsed({
             zone,
             area,
             points,
             customGridArea,
+            is1DBarMode,
+            barLength: len,
+            barWidth: wid,
           });
 
           setSuccess(`Successfully parsed ${points.length} points from Excel!`);
@@ -194,18 +214,24 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
           }
 
           let customGridArea: number | undefined = undefined;
-          if (customSpacing) {
+          if (!is1DBarMode && customSpacing) {
             const spacing = parseFloat(customSpacing);
             if (!isNaN(spacing) && spacing > 0) {
               customGridArea = spacing * spacing;
             }
           }
 
+          const len = is1DBarMode ? (parseFloat(barLength) || 20) : 20;
+          const wid = is1DBarMode ? (parseFloat(barWidth) || 1) : 1;
+
           onDataParsed({
             zone,
             area,
             points,
             customGridArea,
+            is1DBarMode,
+            barLength: len,
+            barWidth: wid,
           });
 
           setSuccess(`Successfully parsed ${points.length} points from CSV file!`);
@@ -286,28 +312,82 @@ export default function SurveyInput({ onDataParsed }: SurveyInputProps) {
           </div>
         </div>
 
-        {/* Configuration grid spacing */}
+        {/* Grading Object Toggle */}
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
-            <Settings className="w-3.5 h-3.5 text-slate-400" />
-            Grid Spacing (Optional)
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              step="any"
-              placeholder="Auto-estimate spacing from bounding box"
-              value={customSpacing}
-              onChange={(e) => setCustomSpacing(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] text-sm text-slate-800 placeholder-slate-400"
-            />
-            {customSpacing && (
-              <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-500 font-bold uppercase pointer-events-none">
-                Meters spacing (A = {parseFloat(customSpacing) * parseFloat(customSpacing)} m²)
-              </span>
-            )}
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Grading Model Type</label>
+          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex">
+            <button
+              type="button"
+              onClick={() => setIs1DBarMode(true)}
+              className={`flex-1 py-2 text-center rounded-lg text-xs font-bold transition cursor-pointer ${
+                is1DBarMode ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              1D Bar Leveling
+            </button>
+            <button
+              type="button"
+              onClick={() => setIs1DBarMode(false)}
+              className={`flex-1 py-2 text-center rounded-lg text-xs font-bold transition cursor-pointer ${
+                !is1DBarMode ? 'bg-[#112E81] text-white shadow' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              2D Terrain Area
+            </button>
           </div>
         </div>
+
+        {is1DBarMode ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                Bar Length (m)
+              </label>
+              <input
+                type="number"
+                step="any"
+                value={barLength}
+                onChange={(e) => setBarLength(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] text-sm text-slate-800"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                Bar Width (m)
+              </label>
+              <input
+                type="number"
+                step="any"
+                value={barWidth}
+                onChange={(e) => setBarWidth(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] text-sm text-slate-800"
+              />
+            </div>
+          </div>
+        ) : (
+          /* Configuration grid spacing */
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+              <Settings className="w-3.5 h-3.5 text-slate-400" />
+              Grid Spacing (Optional)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                placeholder="Auto-estimate spacing from bounding box"
+                value={customSpacing}
+                onChange={(e) => setCustomSpacing(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] text-sm text-slate-800 placeholder-slate-400"
+              />
+              {customSpacing && (
+                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-500 font-bold uppercase pointer-events-none">
+                  Meters spacing (A = {parseFloat(customSpacing) * parseFloat(customSpacing)} m²)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* File Drag and Drop / Uploader */}
         <div>

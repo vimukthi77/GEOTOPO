@@ -18,6 +18,7 @@ export interface CutFillDetail {
   flatCutDepth: number;  // Flat cut depth (m)
   flatFillDepth: number; // Flat fill depth (m)
   flatDepthType: 'cut' | 'fill' | 'grade'; // Flat status
+  distanceAlongBar?: number; // Distance along the 1D bar (m)
 }
 
 export interface OptimizationResult {
@@ -28,12 +29,12 @@ export interface OptimizationResult {
   optimalSlopeDirectionDeg: number; // Direction of slope (degrees, 0 to 360)
   avgGroundHeight: number;          // Average original terrain height (m)
   
-  // Sloped Plane Metrics (m³)
+  // Sloped Plane/Bar Metrics (m³)
   totalCutVolumeM3: number;
   totalFillVolumeM3: number;
   netBalanceM3: number;
   
-  // Flat Plane Metrics (m³) for comparison
+  // Flat Plane/Bar Metrics (m³) for comparison
   flatTargetZ: number;
   flatCutVolumeM3: number;
   flatFillVolumeM3: number;
@@ -44,6 +45,11 @@ export interface OptimizationResult {
   minZ: number; // Minimum terrain elevation (m)
   maxZ: number; // Maximum terrain elevation (m)
   details: CutFillDetail[];
+  
+  // 1D Bar Mode details
+  is1DBarMode?: boolean;
+  barLength?: number;
+  barWidth?: number;
 }
 
 /**
@@ -101,7 +107,10 @@ export function estimateGridArea(points: SurveyPointData[]): number {
  */
 export function optimizeTargetGrade(
   points: SurveyPointData[],
-  customGridArea?: number
+  customGridArea?: number,
+  is1DBarMode: boolean = false,
+  barLength: number = 20,
+  barWidth: number = 1
 ): OptimizationResult {
   const n = points.length;
   if (n === 0) {
@@ -124,6 +133,272 @@ export function optimizeTargetGrade(
       minZ: 0,
       maxZ: 0,
       details: [],
+      is1DBarMode,
+      barLength,
+      barWidth,
+    };
+  }
+
+  if (is1DBarMode) {
+    // 1D Bar / Beam Leveling Mode
+    // 1. Calculate centroid
+    let sumX = 0;
+    let sumY = 0;
+    let sumZ = 0;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const p of points) {
+      sumX += p.x;
+      sumY += p.y;
+      sumZ += p.z;
+      if (p.z < minZ) minZ = p.z;
+      if (p.z > maxZ) maxZ = p.z;
+    }
+    const meanX = sumX / n;
+    const meanY = sumY / n;
+    const avgGroundHeight = sumZ / n;
+    const elevationRangeWarning = (maxZ - minZ) > 3.0;
+
+    // 2. PCA to find direction vector of the bar axis
+    let covXX = 0;
+    let covXY = 0;
+    let covYY = 0;
+    for (const p of points) {
+      const dx = p.x - meanX;
+      const dy = p.y - meanY;
+      covXX += dx * dx;
+      covXY += dx * dy;
+      covYY += dy * dy;
+    }
+
+    let vx = 1;
+    let vy = 0;
+    if (covXX + covYY > 0) {
+      const diff = covXX - covYY;
+      const term = Math.sqrt(diff * diff + 4 * covXY * covXY);
+      const lambda = (covXX + covYY + term) / 2; // Largest eigenvalue
+
+      if (Math.abs(covXY) > 1e-9) {
+        vx = covXY;
+        vy = lambda - covXX;
+        const len = Math.sqrt(vx * vx + vy * vy);
+        vx /= len;
+        vy /= len;
+      } else {
+        if (covXX > covYY) {
+          vx = 1;
+          vy = 0;
+        } else {
+          vx = 0;
+          vy = 1;
+        }
+      }
+    }
+
+    // 3. Project and scale
+    const projPoints = points.map((p, idx) => {
+      const dx = p.x - meanX;
+      const dy = p.y - meanY;
+      const projDist = dx * vx + dy * vy;
+      return { p, idx, projDist, dPrime: 0, deltaL: 0 };
+    });
+
+    let minDist = Infinity;
+    let maxDist = -Infinity;
+    for (const p of projPoints) {
+      if (p.projDist < minDist) minDist = p.projDist;
+      if (p.projDist > maxDist) maxDist = p.projDist;
+    }
+
+    const distSpan = maxDist - minDist;
+    for (const p of projPoints) {
+      if (distSpan > 0) {
+        p.dPrime = -barLength / 2 + ((p.projDist - minDist) / distSpan) * barLength;
+      } else {
+        p.dPrime = 0;
+      }
+    }
+
+    // Sort to compute segment lengths (deltaL)
+    projPoints.sort((a, b) => a.dPrime - b.dPrime);
+    for (let i = 0; i < projPoints.length; i++) {
+      let deltaL = 0;
+      if (projPoints.length <= 1) {
+        deltaL = barLength;
+      } else if (i === 0) {
+        deltaL = (projPoints[0].dPrime + projPoints[1].dPrime) / 2 - (-barLength / 2);
+      } else if (i === projPoints.length - 1) {
+        deltaL = barLength / 2 - (projPoints[projPoints.length - 2].dPrime + projPoints[projPoints.length - 1].dPrime) / 2;
+      } else {
+        deltaL = (projPoints[i + 1].dPrime - projPoints[i - 1].dPrime) / 2;
+      }
+      projPoints[i].deltaL = deltaL;
+    }
+
+    // Restore index order
+    projPoints.sort((a, b) => a.idx - b.idx);
+
+    // OPTIMIZATION 1: Baseline Perfectly Flat Bar (0° Slope)
+    const evaluateFlatNetDepth = (T: number): number => {
+      let net = 0;
+      for (const p of projPoints) {
+        const { cutDepth, fillDepth } = calculateDepths(p.p.z, T);
+        net += (cutDepth - fillDepth) * p.deltaL;
+      }
+      return net;
+    };
+
+    let lowFlat = minZ;
+    let highFlat = maxZ;
+    let flatTargetZ = avgGroundHeight;
+
+    for (let i = 0; i < 50; i++) {
+      const mid = (lowFlat + highFlat) / 2;
+      const netDepth = evaluateFlatNetDepth(mid);
+      if (Math.abs(netDepth) < 1e-9) {
+        flatTargetZ = mid;
+        break;
+      }
+      if (netDepth > 0) {
+        lowFlat = mid;
+      } else {
+        highFlat = mid;
+      }
+      flatTargetZ = (lowFlat + highFlat) / 2;
+    }
+
+    let totalFlatCutVolume = 0;
+    let totalFlatFillVolume = 0;
+    for (const p of projPoints) {
+      const { cutDepth, fillDepth } = calculateDepths(p.p.z, flatTargetZ);
+      totalFlatCutVolume += cutDepth * p.deltaL * barWidth;
+      totalFlatFillVolume += fillDepth * p.deltaL * barWidth;
+    }
+    const flatNetBalanceM3 = totalFlatCutVolume - totalFlatFillVolume;
+
+    // OPTIMIZATION 2: Sloped Bar (-5° to +5°)
+    let bestVolume = Infinity;
+    let optimalTargetZ = flatTargetZ;
+    let optimalTheta = 0;
+
+    const thetaCandidates: number[] = [];
+    for (let t = -5.0; t <= 5.0; t = Number((t + 0.1).toFixed(1))) {
+      thetaCandidates.push(t);
+    }
+
+    for (const theta of thetaCandidates) {
+      const s = Math.tan(theta * Math.PI / 180);
+
+      const evaluateNetDepth = (Z0: number): number => {
+        let net = 0;
+        for (const p of projPoints) {
+          const targetElevation = Z0 + s * p.dPrime;
+          const { cutDepth, fillDepth } = calculateDepths(p.p.z, targetElevation);
+          net += (cutDepth - fillDepth) * p.deltaL;
+        }
+        return net;
+      };
+
+      let low = minZ - 5;
+      let high = maxZ + 5;
+      let optimalZ0 = avgGroundHeight;
+
+      for (let iter = 0; iter < 40; iter++) {
+        const mid = (low + high) / 2;
+        const netDepth = evaluateNetDepth(mid);
+        if (Math.abs(netDepth) < 1e-9) {
+          optimalZ0 = mid;
+          break;
+        }
+        if (netDepth > 0) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+        optimalZ0 = (low + high) / 2;
+      }
+
+      let currentTotalVolume = 0;
+      for (const p of projPoints) {
+        const targetElevation = optimalZ0 + s * p.dPrime;
+        const { cutDepth, fillDepth } = calculateDepths(p.p.z, targetElevation);
+        currentTotalVolume += (cutDepth + fillDepth) * p.deltaL * barWidth;
+      }
+
+      if (currentTotalVolume < bestVolume) {
+        bestVolume = currentTotalVolume;
+        optimalTargetZ = optimalZ0;
+        optimalTheta = theta;
+      }
+    }
+
+    const optimalSlopeMag = Math.tan(optimalTheta * Math.PI / 180);
+    const optimalSlopeX = optimalSlopeMag * vx;
+    const optimalSlopeY = optimalSlopeMag * vy;
+    const optimalSlopeAngleDeg = Math.abs(optimalTheta);
+    
+    let optimalSlopeDirectionDeg = Math.atan2(vy, vx) * 180 / Math.PI;
+    if (optimalSlopeDirectionDeg < 0) optimalSlopeDirectionDeg += 360;
+    if (optimalTheta < 0) {
+      optimalSlopeDirectionDeg = (optimalSlopeDirectionDeg + 180) % 360;
+    }
+
+    let totalCutVolumeM3 = 0;
+    let totalFillVolumeM3 = 0;
+    const details: CutFillDetail[] = [];
+
+    for (const p of projPoints) {
+      const targetZAtPoint = optimalTargetZ + optimalSlopeMag * p.dPrime;
+      const { cutDepth, fillDepth, depthType } = calculateDepths(p.p.z, targetZAtPoint);
+      totalCutVolumeM3 += cutDepth * p.deltaL * barWidth;
+      totalFillVolumeM3 += fillDepth * p.deltaL * barWidth;
+
+      const { cutDepth: flatCutDepth, fillDepth: flatFillDepth, depthType: flatDepthType } = calculateDepths(p.p.z, flatTargetZ);
+
+      details.push({
+        pointId: p.p.pointId,
+        x: p.p.x,
+        y: p.p.y,
+        z: p.p.z,
+        targetZ: targetZAtPoint,
+        flatTargetZ: flatTargetZ,
+        cutDepth,
+        fillDepth,
+        depthType,
+        flatCutDepth,
+        flatFillDepth,
+        flatDepthType,
+        distanceAlongBar: p.dPrime + barLength / 2,
+      });
+    }
+
+    const netBalanceM3 = totalCutVolumeM3 - totalFillVolumeM3;
+
+    return {
+      optimalTargetZ,
+      optimalSlopeX,
+      optimalSlopeY,
+      optimalSlopeAngleDeg,
+      optimalSlopeDirectionDeg,
+      avgGroundHeight,
+      
+      totalCutVolumeM3,
+      totalFillVolumeM3,
+      netBalanceM3,
+      
+      flatTargetZ,
+      flatCutVolumeM3: totalFlatCutVolume,
+      flatFillVolumeM3: totalFlatFillVolume,
+      flatNetBalanceM3,
+      
+      gridArea: barWidth,
+      elevationRangeWarning,
+      minZ,
+      maxZ,
+      details,
+      is1DBarMode,
+      barLength,
+      barWidth,
     };
   }
 
@@ -337,5 +612,8 @@ export function optimizeTargetGrade(
     minZ,
     maxZ,
     details,
+    is1DBarMode,
+    barLength,
+    barWidth,
   };
 }
