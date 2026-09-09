@@ -8,7 +8,8 @@ import SpatialScatterPlot from '@/components/ScatterPlot';
 import TerrainMap from '@/components/TerrainMap';
 import PastRecords from '@/components/PastRecords';
 import { optimizeTargetGrade, OptimizationResult, SurveyPointData } from '@/lib/optimization';
-import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark, FileDown } from 'lucide-react';
+import Link from 'next/link';
+import { Database, Table, Map, AlertCircle, CheckCircle2, Loader2, Landmark, FileDown, Calculator } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 
@@ -277,45 +278,55 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {activeResult && (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleExportPDF}
-                disabled={exportingPDF}
-                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#112E81] to-[#1d4ed8] hover:from-[#1d4ed8] hover:to-[#112E81] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
-              >
-                {exportingPDF ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-4 h-4" />
-                    Export Survey PDF
-                  </>
-                )}
-              </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/tracker"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow transition text-xs cursor-pointer self-start md:self-center"
+            >
+              <Calculator className="w-4 h-4 text-[#112E81]" />
+              Tracker Calculator
+            </Link>
 
-              <button
-                onClick={handleSaveToDatabase}
-                disabled={saving}
-                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#36ADA3] to-teal-600 hover:from-teal-500 hover:to-[#36ADA3] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving to Cloud...
-                  </>
-                ) : (
-                  <>
-                    <Database className="w-4 h-4" />
-                    Save Survey Run
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+            {activeResult && (
+              <>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportingPDF}
+                  className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#112E81] to-[#1d4ed8] hover:from-[#1d4ed8] hover:to-[#112E81] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
+                >
+                  {exportingPDF ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4" />
+                      Export Survey PDF
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleSaveToDatabase}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#36ADA3] to-teal-600 hover:from-teal-500 hover:to-[#36ADA3] border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer self-start md:self-center"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Saving to Cloud...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4" />
+                      Save Survey Run
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Top level alerts */}
