@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Calculator, Settings, LogOut, User, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Calculator, Home, Settings, LogOut, User, Loader2 } from 'lucide-react';
 
 interface UserSession {
   email: string;
@@ -72,15 +72,15 @@ export default function Navbar() {
       {/* Navigation */}
       <nav className="flex items-center gap-1 md:gap-4">
         <Link
-          href="/dashboard"
+          href="/"
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-            pathname.startsWith('/dashboard')
+            pathname === '/'
               ? 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
               : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
           }`}
         >
-          <LayoutDashboard className="w-4 h-4" />
-          <span className="hidden md:inline">Dashboard</span>
+          <Home className="w-4 h-4" />
+          <span>Home</span>
         </Link>
 
         <Link
@@ -92,22 +92,9 @@ export default function Navbar() {
           }`}
         >
           <Calculator className="w-4 h-4" />
-          <span className="hidden md:inline">Tracker Calculator</span>
+          <span className="hidden sm:inline">Solar Pile Tracker Innovation Calculator</span>
+          <span className="sm:hidden">Calculator</span>
         </Link>
-
-        {session?.role === 'admin' && (
-          <Link
-            href="/settings"
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-              pathname.startsWith('/settings')
-                ? 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span className="hidden md:inline">User Settings</span>
-          </Link>
-        )}
       </nav>
 
       {/* Auth removed */}
