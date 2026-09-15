@@ -1570,7 +1570,7 @@ export default function TrackerCalculator() {
       {/* Off-screen Printable Container for Single-Page A4 PDF Checklist Report */}
       <div
         id="tracker-pdf-report-container"
-        className="absolute -left-[9999px] top-0 bg-white text-black font-sans p-6 w-[794px] min-h-[1123px] box-border border-2 border-black flex flex-col justify-start gap-0"
+        className="absolute -left-[9999px] top-0 bg-white text-black font-sans p-6 w-[794px] h-[1123px] max-h-[1123px] box-border border-2 border-black overflow-hidden"
         style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
       >
         <div>
@@ -1649,10 +1649,10 @@ export default function TrackerCalculator() {
             </tbody>
           </table>
 
-          {/* Main Checklist Points Table */}
+          {/* Main Combined Checklist Points Table */}
           <table className="w-full text-[11px] border-collapse border border-black border-t-0 text-center leading-normal mb-0">
             <thead>
-              <tr className="border-b border-black font-bold uppercase bg-gray-100 text-[10.5px]">
+              <tr className="border-b border-black font-bold uppercase bg-gray-100 text-[10.5px] h-[26px]">
                 <th className="p-1 border-r border-black w-[10%]">Point ID</th>
                 <th className="p-1 border-r border-black w-[18%]">DISTANCE</th>
                 <th className="p-1 border-r border-black w-[18%]">FINAL LEVEL</th>
@@ -1680,98 +1680,102 @@ export default function TrackerCalculator() {
                   })),
                 ];
 
-                return allRows.map((row) => (
-                  <tr key={row.pointId} className="border-b border-black text-[11px] h-[22px]">
-                    <td className="p-0.5 border-r border-black font-bold">{row.pointId}</td>
-                    <td className="p-0.5 border-r border-black font-mono">{row.distance}</td>
-                    <td className="p-0.5 border-r border-black font-mono font-bold">{row.finalLevel}</td>
-                    <td className="p-0.5 border-r border-black"></td>
-                    <td className="p-0.5 border-r border-black"></td>
-                    <td className="p-0.5 text-left pl-1.5">{row.remark}</td>
-                  </tr>
-                ));
+                const totalCount = allRows.length;
+                // Dynamically calculate big row height for pile table fields so they expand to fill full A4 page height
+                const pileRowHeight = Math.floor(640 / totalCount);
+
+                return (
+                  <>
+                    {allRows.map((row) => (
+                      <tr
+                        key={row.pointId}
+                        className="border-b border-black text-[11.5px] align-middle"
+                        style={{ height: `${pileRowHeight}px` }}
+                      >
+                        <td className="p-1 border-r border-black font-bold">{row.pointId}</td>
+                        <td className="p-1 border-r border-black font-mono font-semibold text-black">{row.distance}</td>
+                        <td className="p-1 border-r border-black font-mono font-bold text-black">{row.finalLevel}</td>
+                        <td className="p-1 border-r border-black"></td>
+                        <td className="p-1 border-r border-black"></td>
+                        <td className="p-1 text-left pl-2">{row.remark}</td>
+                      </tr>
+                    ))}
+
+                    {/* Summary Rows */}
+                    <tr className="border-b border-black font-bold text-left h-[26px]">
+                      <td colSpan={2} className="p-1.5 border-r border-black uppercase text-[11px]">
+                        ELEVATION DIFFERENCE
+                      </td>
+                      <td colSpan={3} className="p-1.5 border-r border-black font-mono text-[11px]">
+                        {calculatedData.elevationDifference.toFixed(3)} m
+                      </td>
+                      <td className="p-1.5"></td>
+                    </tr>
+
+                    <tr className="border-b border-black font-bold text-left h-[26px]">
+                      <td colSpan={2} className="p-1.5 border-r border-black uppercase text-[11px]">
+                        TRACKER ANGLE
+                      </td>
+                      <td colSpan={3} className="p-1.5 border-r border-black font-mono text-[11px]">
+                        {calculatedData.angleDeg.toFixed(3)}°
+                      </td>
+                      <td className="p-1.5"></td>
+                    </tr>
+
+                    <tr className="border-b border-black font-bold text-left h-[26px]">
+                      <td colSpan={2} className="p-1.5 border-r border-black uppercase text-[11px]">
+                        TRACKER TYPE
+                      </td>
+                      <td colSpan={3} className="p-1.5 border-r border-black text-[11px]">
+                        {calculatedData.trackerType}
+                      </td>
+                      <td className="p-1.5"></td>
+                    </tr>
+
+                    <tr className="border-b border-black font-bold text-left h-[26px]">
+                      <td colSpan={2} className="p-1.5 border-r border-black uppercase text-[11px]">
+                        TRACKER LOCATION
+                      </td>
+                      <td colSpan={3} className="p-1.5 border-r border-black text-[11px]">
+                        {calculatedData.trackerLocation}
+                      </td>
+                      <td className="p-1.5"></td>
+                    </tr>
+
+                    {/* Standard NOTE Combined Row */}
+                    <tr className="border-b border-black text-left h-[60px]">
+                      <td colSpan={2} className="p-2 border-r border-black font-bold text-center align-middle uppercase text-[11px]">
+                        NOTE
+                      </td>
+                      <td colSpan={4} className="p-2.5 align-top text-gray-800 text-[10.5px] font-normal leading-relaxed">
+                        {notes}
+                      </td>
+                    </tr>
+
+                    {/* Combined Sign-off Section Rows directly in table */}
+                    <tr className="border-b border-black font-bold bg-gray-100 text-[10.5px] h-[24px]">
+                      <td className="p-1 border-r border-black text-left pl-2" colSpan={2}></td>
+                      <td className="p-1 border-r border-black text-center" colSpan={2}>Lakdhanavi Limited</td>
+                      <td className="p-1 border-r border-black text-center">Windforce PLC</td>
+                      <td className="p-1 text-center">Date</td>
+                    </tr>
+
+                    <tr className="border-b border-black text-[10.5px] h-[28px] align-middle">
+                      <td className="p-1 border-r border-black text-left pl-2 font-bold" colSpan={2}>Checked by:</td>
+                      <td className="p-1 border-r border-black text-center font-medium" colSpan={2}>{checkedByName}</td>
+                      <td className="p-1 border-r border-black text-center font-medium">{checkedByDesig}</td>
+                      <td className="p-1 text-center font-medium">{checkedByDate}</td>
+                    </tr>
+
+                    <tr className="text-[10.5px] h-[28px] align-middle">
+                      <td className="p-1 border-r border-black text-left pl-2 font-bold" colSpan={2}>Approved by:</td>
+                      <td className="p-1 border-r border-black text-center font-medium" colSpan={2}>{approvedByName}</td>
+                      <td className="p-1 border-r border-black text-center font-medium">{approvedByDesig}</td>
+                      <td className="p-1 text-center font-medium">{approvedByDate}</td>
+                    </tr>
+                  </>
+                );
               })()}
-
-              {/* Summary Rows */}
-              {calculatedData && (
-                <>
-                  <tr className="border-b border-black font-bold text-left h-[22px]">
-                    <td colSpan={2} className="p-1 border-r border-black uppercase">
-                      ELEVATION DIFFERENCE
-                    </td>
-                    <td colSpan={3} className="p-1 border-r border-black font-mono">
-                      {calculatedData.elevationDifference.toFixed(3)} m
-                    </td>
-                    <td className="p-1"></td>
-                  </tr>
-
-                  <tr className="border-b border-black font-bold text-left h-[22px]">
-                    <td colSpan={2} className="p-1 border-r border-black uppercase">
-                      TRACKER ANGLE
-                    </td>
-                    <td colSpan={3} className="p-1 border-r border-black font-mono">
-                      {calculatedData.angleDeg.toFixed(3)}°
-                    </td>
-                    <td className="p-1"></td>
-                  </tr>
-
-                  <tr className="border-b border-black font-bold text-left h-[22px]">
-                    <td colSpan={2} className="p-1 border-r border-black uppercase">
-                      TRACKER TYPE
-                    </td>
-                    <td colSpan={3} className="p-1 border-r border-black">
-                      {calculatedData.trackerType}
-                    </td>
-                    <td className="p-1"></td>
-                  </tr>
-
-                  <tr className="border-b border-black font-bold text-left h-[22px]">
-                    <td colSpan={2} className="p-1 border-r border-black uppercase">
-                      TRACKER LOCATION
-                    </td>
-                    <td colSpan={3} className="p-1 border-r border-black">
-                      {calculatedData.trackerLocation}
-                    </td>
-                    <td className="p-1"></td>
-                  </tr>
-
-                  {/* NOTE Combined Row - Seamlessly attached with no gap */}
-                  <tr className="border-t border-black text-left">
-                    <td colSpan={2} className="p-2 border-r border-black font-bold text-center align-middle uppercase text-[11px]">
-                      NOTE
-                    </td>
-                    <td colSpan={4} className="p-2 h-14 align-top text-gray-800 text-[10px] font-normal">
-                      {notes}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-
-          {/* Footer Sign-off Table directly attached under NOTE table with no gap */}
-          <table className="w-full text-[10.5px] border-collapse border border-black border-t-0 text-center">
-            <thead>
-              <tr className="border-b border-black font-bold bg-gray-100">
-                <th className="p-1 border-r border-black w-[28%] text-left pl-2"></th>
-                <th className="p-1 border-r border-black w-[36%]">Lakdhanavi Limited</th>
-                <th className="p-1 border-r border-black w-[24%]">Windforce PLC</th>
-                <th className="p-1 w-[12%]">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-black h-[26px]">
-                <td className="p-1 border-r border-black text-left pl-2 font-bold">Checked by:</td>
-                <td className="p-1 border-r border-black">{checkedByName}</td>
-                <td className="p-1 border-r border-black">{checkedByDesig}</td>
-                <td className="p-1">{checkedByDate}</td>
-              </tr>
-              <tr className="h-[26px]">
-                <td className="p-1 border-r border-black text-left pl-2 font-bold">Approved by:</td>
-                <td className="p-1 border-r border-black">{approvedByName}</td>
-                <td className="p-1 border-r border-black">{approvedByDesig}</td>
-                <td className="p-1">{approvedByDate}</td>
-              </tr>
             </tbody>
           </table>
         </div>
