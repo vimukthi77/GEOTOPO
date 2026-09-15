@@ -163,6 +163,7 @@ export interface PilePointResult {
 
 export interface TrackerCalculationOutput {
   trackerType: TrackerType;
+  trackerLocation: string;
   configurationKey: string;
   configurationName: string;
   pilePoints: number;
@@ -184,6 +185,29 @@ export interface SavedTrackerRecord {
   isoDate: string;
   calculation: TrackerCalculationOutput;
   notes?: string;
+}
+
+/**
+ * Determines tracker location classification based on tracker type and pile point count:
+ * - 2 STRING: 8 Pile Points -> "Corner Tracker", 9 Pile Points -> "Intermediate Tracker"
+ * - 3 STRING: 11 Pile Points -> "Corner Tracker", 12 Pile Points -> "Intermediate Tracker"
+ * - 4 STRING: 15 Pile Points -> "Corner Tracker", 16 or 9 Pile Points -> "Intermediate Tracker"
+ */
+export function getTrackerLocation(trackerType: TrackerType, pilePoints: number): string {
+  if (trackerType === '2 STRING') {
+    if (pilePoints === 8) return 'Corner Tracker';
+    if (pilePoints === 9) return 'Intermediate Tracker';
+  }
+  if (trackerType === '3 STRING') {
+    if (pilePoints === 11) return 'Corner Tracker';
+    if (pilePoints === 12) return 'Intermediate Tracker';
+  }
+  if (trackerType === '4 STRING') {
+    if (pilePoints === 15) return 'Corner Tracker';
+    if (pilePoints === 16 || pilePoints === 9) return 'Intermediate Tracker';
+  }
+  if (pilePoints === 8 || pilePoints === 11 || pilePoints === 15) return 'Corner Tracker';
+  return 'Intermediate Tracker';
 }
 
 /**
@@ -242,8 +266,11 @@ export function calculateTracker(
     };
   });
 
+  const trackerLocation = getTrackerLocation(configuration.trackerType, configuration.pilePoints);
+
   return {
     trackerType: configuration.trackerType,
+    trackerLocation,
     configurationKey: configKey,
     configurationName: `${configuration.pilePoints} Pile Points`,
     pilePoints: configuration.pilePoints,

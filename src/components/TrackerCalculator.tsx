@@ -14,10 +14,14 @@ import {
   renderTrackerChartToCanvasPng,
   getConfigurationsForTracker,
 } from '@/lib/trackerCalculations';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas-pro';
 import {
   Calculator,
   Download,
   FileSpreadsheet,
+  FileText,
+  Loader2,
   CheckCircle2,
   AlertCircle,
   ArrowUpRight,
@@ -53,6 +57,25 @@ export default function TrackerCalculator() {
   const [savedRecords, setSavedRecords] = useState<SavedTrackerRecord[]>([]);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string>('');
   const [expandedSavedId, setExpandedSavedId] = useState<string | null>(null);
+
+  // Metadata state for PDF Report Checklist
+  const [trackerId, setTrackerId] = useState<string>('TRK-01');
+  const [structure, setStructure] = useState<string>('');
+  const [locationGrid, setLocationGrid] = useState<string>('');
+  const [docNo, setDocNo] = useState<string>('');
+  const [levelSheetNo, setLevelSheetNo] = useState<string>('');
+  const [inspectionDate, setInspectionDate] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [checkedByName, setCheckedByName] = useState<string>('');
+  const [checkedByDesig, setCheckedByDesig] = useState<string>('');
+  const [checkedByDate, setCheckedByDate] = useState<string>('');
+  const [approvedByName, setApprovedByName] = useState<string>('');
+  const [approvedByDesig, setApprovedByDesig] = useState<string>('');
+  const [approvedByDate, setApprovedByDate] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [exportingPDF, setExportingPDF] = useState<boolean>(false);
+
   const e1InputId = useId();
   const e2InputId = useId();
 
@@ -115,6 +138,66 @@ export default function TrackerCalculator() {
     setError('');
     const chartPng = renderTrackerChartToCanvasPng(calculatedData);
     downloadStyledExcel(calculatedData, chartPng);
+  };
+
+  // Handle Single-Page A4 PDF Checklist Download
+  const handleExportChecklistPDF = async () => {
+    if (!calculatedData) {
+      setError('Please enter valid numerical values for E1 and E2 before downloading PDF.');
+      return;
+    }
+    setExportingPDF(true);
+    setError('');
+
+    try {
+      const printEl = document.getElementById('tracker-pdf-report-container');
+      if (!printEl) {
+        throw new Error('PDF checklist template element not found.');
+      }
+
+      const canvas = await html2canvas(printEl, {
+        scale: 2.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+
+      doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
+      const cleanId = (trackerId || 'Tracker').replace(/[^a-zA-Z0-9_-]/g, '_');
+      doc.save(`Tracker_Gradient_Checklist_${cleanId}.pdf`);
+
+      // Automatically reset Section 3 (Elevation Inputs) and Section 4 (Site Checklist Metadata)
+      setE1Input('');
+      setE2Input('');
+      setTrackerId('');
+      setStructure('');
+      setLocationGrid('');
+      setDocNo('');
+      setLevelSheetNo('');
+      setNotes('');
+      setCheckedByName('');
+      setCheckedByDesig('');
+      setCheckedByDate('');
+      setApprovedByName('');
+      setApprovedByDesig('');
+      setApprovedByDate('');
+    } catch (err: any) {
+      console.error('Checklist PDF export failed:', err);
+      alert('Failed to generate PDF report. Please try again.');
+    } finally {
+      setExportingPDF(false);
+    }
   };
 
   // Quick Preset Handlers
@@ -199,7 +282,7 @@ export default function TrackerCalculator() {
                 <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
                   Solar Pile Tracker Innovation Calculator
                 </h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                <span className="px-2.5 py-0.5 text-[10px] font-black bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
                   Fixed Distances
                 </span>
               </div>
@@ -221,12 +304,29 @@ export default function TrackerCalculator() {
             {calculatedData && (
               <>
                 <button
+                  onClick={handleExportChecklistPDF}
+                  disabled={exportingPDF}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#112E81] via-[#1e3a8a] to-[#0d9488] hover:brightness-110 border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer text-xs"
+                  title="Download official Tracker Gradient Checklist PDF Report (1-Page A4)"
+                >
+                  {exportingPDF ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-emerald-300" />
+                  )}
+                  <span>Download PDF Checklist</span>
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-white/20 text-white rounded uppercase tracking-wider">
+                    A4 .PDF
+                  </span>
+                </button>
+
+                <button
                   onClick={handleDownloadExcel}
                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#0d9488] via-[#0f766e] to-[#112E81] hover:brightness-110 border-none font-bold rounded-xl text-white shadow-md hover:shadow-lg active:scale-[0.98] transition cursor-pointer text-xs"
                   title="Download styled Excel spreadsheet with custom header colors and tables"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-                  <span>Download Excel (Coloured Tables)</span>
+                  <span>Download Excel</span>
                   <span className="px-1.5 py-0.5 text-[9px] font-black bg-white/20 text-white rounded uppercase tracking-wider">
                     .XLS
                   </span>
@@ -503,6 +603,141 @@ export default function TrackerCalculator() {
               )}
             </div>
           </div>
+
+          {/* Section 4: Site & Checklist Info for PDF Report */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#112E81]" />
+                4. Site Checklist Metadata
+              </h2>
+              <span className="text-[11px] font-bold text-slate-400">PDF Report Info</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {/* Tracker ID */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Tracker ID *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. TRK-001"
+                  value={trackerId}
+                  onChange={(e) => setTrackerId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+
+              {/* Structure */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Structure
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Structure A"
+                  value={structure}
+                  onChange={(e) => setStructure(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+
+              {/* Location / Grid */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Location / Grid
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Grid B-12"
+                  value={locationGrid}
+                  onChange={(e) => setLocationGrid(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+
+              {/* Inspection Date */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Inspection Date
+                </label>
+                <input
+                  type="date"
+                  value={inspectionDate}
+                  onChange={(e) => setInspectionDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+
+              {/* Doc No */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Doc. No
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. DOC-100MW-01"
+                  value={docNo}
+                  onChange={(e) => setDocNo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+
+              {/* Sheet No */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Sheet No
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. LS-001"
+                  value={levelSheetNo}
+                  onChange={(e) => setLevelSheetNo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81]"
+                />
+              </div>
+            </div>
+
+            {/* Note Input */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                Checklist Notes / Remarks
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Optional site inspection notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] text-xs resize-none"
+              />
+            </div>
+
+            {/* Section 4 Action Button: Download PDF Checklist */}
+            <div className="pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleExportChecklistPDF}
+                disabled={exportingPDF || !calculatedData}
+                className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-md active:scale-[0.99] cursor-pointer ${
+                  calculatedData
+                    ? 'bg-gradient-to-r from-[#112E81] via-[#1e3a8a] to-[#0d9488] hover:brightness-110 text-white'
+                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                }`}
+                title="Download official Tracker Gradient Checklist PDF Report (Resets inputs on export)"
+              >
+                {exportingPDF ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <FileText className="w-4 h-4 text-emerald-300" />
+                )}
+                <span>Download PDF Checklist Report</span>
+                <span className="px-1.5 py-0.5 text-[9px] font-black bg-white/20 text-white rounded uppercase tracking-wider">
+                  A4 .PDF
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Tabbed View (Table & Results | Profile Chart | Saved History) */}
@@ -577,6 +812,27 @@ export default function TrackerCalculator() {
                 </div>
               ) : (
                 <>
+                  {/* Big Critical Warning Banner if Tan⁻¹ Angle > 5° */}
+                  {calculatedData.angleDeg > 5 && (
+                    <div className="p-4 bg-red-600 text-white rounded-2xl shadow-xl border-2 border-red-700 flex items-start gap-3.5 animate-pulse">
+                      <div className="p-2.5 bg-white/20 rounded-xl shrink-0 mt-0.5">
+                        <AlertCircle className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-extrabold text-base uppercase tracking-wider text-white flex items-center gap-2">
+                          ⚠️ CRITICAL GRADIENT WARNING: ANGLE EXCEEDS MAXIMUM 5.000° LIMIT!
+                        </h3>
+                        <p className="text-xs text-red-100 font-semibold leading-relaxed">
+                          Calculated Tracker Inclination Angle is{' '}
+                          <strong className="underline text-yellow-300 font-mono text-sm px-1.5 py-0.5 bg-black/30 rounded">
+                            {calculatedData.angleDeg.toFixed(3)}°
+                          </strong>
+                          , which exceeds the maximum permissible engineering threshold of <strong>5.000°</strong> (Slope Tan: {calculatedData.tan.toFixed(6)}). Please verify E1 ({calculatedData.E1.toFixed(3)}m) and E2 ({calculatedData.E2.toFixed(3)}m) elevation inputs!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Summary Metrics Cards */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -654,15 +910,33 @@ export default function TrackerCalculator() {
                         </div>
                       </div>
 
-                      <div className="p-3.5 bg-indigo-50/60 border border-indigo-200/80 rounded-xl col-span-2 sm:col-span-1">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
-                          Tan⁻¹ Angle (Degrees)
+                      <div
+                        className={`p-3.5 border rounded-xl col-span-2 sm:col-span-1 transition ${
+                          calculatedData.angleDeg > 5
+                            ? 'bg-red-50 border-red-300 text-red-900 ring-2 ring-red-500'
+                            : 'bg-indigo-50/60 border-indigo-200/80'
+                        }`}
+                      >
+                        <div
+                          className={`text-[10px] font-bold uppercase tracking-wider ${
+                            calculatedData.angleDeg > 5 ? 'text-red-700' : 'text-indigo-700'
+                          }`}
+                        >
+                          Tan⁻¹ Angle (Degrees) {calculatedData.angleDeg > 5 && '⚠️ > 5°'}
                         </div>
-                        <div className="text-sm font-black text-[#112E81] mt-1 font-mono">
+                        <div
+                          className={`text-sm font-black mt-1 font-mono ${
+                            calculatedData.angleDeg > 5 ? 'text-red-700 font-extrabold' : 'text-[#112E81]'
+                          }`}
+                        >
                           {calculatedData.angleDeg.toFixed(3)}°
                         </div>
-                        <div className="text-[11px] font-semibold text-indigo-600 mt-0.5">
-                          atan(Tan) × 180 / π
+                        <div
+                          className={`text-[11px] font-semibold mt-0.5 ${
+                            calculatedData.angleDeg > 5 ? 'text-red-600 font-bold' : 'text-indigo-600'
+                          }`}
+                        >
+                          {calculatedData.angleDeg > 5 ? 'EXCEEDS 5.000° LIMIT!' : 'atan(Tan) × 180 / π'}
                         </div>
                       </div>
                     </div>
@@ -704,15 +978,32 @@ export default function TrackerCalculator() {
                         </p>
                       </div>
 
-                      {/* Dual Action Export Buttons */}
+                      {/* Export Action Buttons */}
                       <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                        <button
+                          onClick={handleExportChecklistPDF}
+                          disabled={exportingPDF}
+                          className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-[#112E81] via-[#1e3a8a] to-[#0d9488] hover:brightness-110 text-white rounded-xl text-xs font-black shadow-sm hover:shadow-md transition active:scale-[0.98] cursor-pointer"
+                          title="Download official Tracker Gradient Checklist PDF Report (1-Page A4)"
+                        >
+                          {exportingPDF ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-emerald-300" />
+                          )}
+                          <span>Download PDF Checklist</span>
+                          <span className="px-1.5 py-0.5 text-[9px] font-black bg-white/20 text-white rounded uppercase tracking-wider">
+                            A4 .PDF
+                          </span>
+                        </button>
+
                         <button
                           onClick={handleDownloadExcel}
                           className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-[#0d9488] via-[#0f766e] to-[#112E81] hover:brightness-110 text-white rounded-xl text-xs font-black shadow-sm hover:shadow-md transition active:scale-[0.98] cursor-pointer"
                           title="Download beautifully styled Excel report with header colors, formatted tables, and profile chart image"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>Download Excel (Coloured Tables &amp; Chart)</span>
+                          <span>Download Excel</span>
                           <span className="px-1.5 py-0.5 text-[9px] font-black bg-white/20 text-white rounded uppercase tracking-wider">
                             .XLS
                           </span>
@@ -1273,6 +1564,219 @@ export default function TrackerCalculator() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Off-screen Printable Container for Single-Page A4 PDF Checklist Report */}
+      <div
+        id="tracker-pdf-report-container"
+        className="absolute -left-[9999px] top-0 bg-white text-black font-sans p-6 w-[794px] min-h-[1123px] box-border border-2 border-black flex flex-col justify-start gap-0"
+        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+      >
+        <div>
+          {/* Main Document Header */}
+          <div className="text-center font-black text-sm tracking-wide mb-1 uppercase text-black">
+            100 MW SOLAR PARK FACILITY, SIYAMBALANDUWA, SRI LANKA.
+          </div>
+          <div className="text-center font-bold text-xs uppercase underline tracking-wider mb-2 text-black">
+            TRACKER - GRADIENT CHECKLIST
+          </div>
+
+          {/* Header Metadata Table */}
+          <table className="w-full text-[11px] border-collapse border border-black mb-0 leading-tight">
+            <tbody>
+              {/* Row 1: CLIENT */}
+              <tr className="border-b border-black">
+                <td className="p-1.5 border-r border-black w-[65%] align-middle">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold uppercase">CLIENT:</span> Rividhanavi (Private) Limited
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/rivilogo.png" alt="Rividhanavi Logo" className="h-6 object-contain" />
+                      <span className="text-[8.5px] text-gray-700 leading-tight font-normal">
+                        No. 67, Park Street, Colombo 02,<br />Sri Lanka
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-1.5 w-[35%] align-top">
+                  <span className="font-bold">Doc. No:</span> {docNo || '..............................................'}
+                </td>
+              </tr>
+
+              {/* Row 2: EPC CONTRACTORS */}
+              <tr className="border-b border-black">
+                <td className="p-1.5 border-r border-black align-middle">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold uppercase">EPC CONTRACTORS:</span><br />
+                      Windforce PLC &amp; Lakdhanavi Limited
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/windlogo.png" alt="Windforce Logo" className="h-5 object-contain" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/laklogo.png" alt="Lakdhanavi Logo" className="h-5 object-contain" />
+                    </div>
+                  </div>
+                </td>
+                <td className="p-1.5 align-top">
+                  <span className="font-bold">Sheet No:</span> {levelSheetNo || '..............................................'}
+                </td>
+              </tr>
+
+              {/* Row 3: Structure / Location Grid */}
+              <tr className="border-b border-black">
+                <td className="p-1.5 border-r border-black">
+                  <span className="font-bold">Structure :</span> {structure || '..............................................'}
+                </td>
+                <td className="p-1.5">
+                  <span className="font-bold">Location/ Grid :</span> {locationGrid || '..............................................'}
+                </td>
+              </tr>
+
+              {/* Row 4: TRACKER ID / Inspection Date */}
+              <tr>
+                <td className="p-1.5 border-r border-black">
+                  <span className="font-bold">TRACKER ID :</span> {trackerId || '..............................................'}
+                </td>
+                <td className="p-1.5">
+                  <span className="font-bold">Inspection Date :</span> {inspectionDate || '..............................................'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Main Checklist Points Table */}
+          <table className="w-full text-[11px] border-collapse border border-black border-t-0 text-center leading-normal mb-0">
+            <thead>
+              <tr className="border-b border-black font-bold uppercase bg-gray-100 text-[10.5px]">
+                <th className="p-1 border-r border-black w-[10%]">Point ID</th>
+                <th className="p-1 border-r border-black w-[18%]">DISTANCE</th>
+                <th className="p-1 border-r border-black w-[18%]">FINAL LEVEL</th>
+                <th className="p-1 border-r border-black w-[18%]">EXISTING LEVEL</th>
+                <th className="p-1 border-r border-black w-[18%]">DEVIATION</th>
+                <th className="p-1 w-[18%]">Remark</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Point 1 (E1) + intermediate and E2 points */}
+              {(() => {
+                if (!calculatedData) return null;
+                const allRows = [
+                  {
+                    pointId: '1',
+                    distance: '0.000',
+                    finalLevel: calculatedData.E1.toFixed(3),
+                    remark: '',
+                  },
+                  ...calculatedData.results.map((res, idx) => ({
+                    pointId: (idx + 2).toString(),
+                    distance: res.distance.toFixed(3),
+                    finalLevel: res.elevation.toFixed(3),
+                    remark: '',
+                  })),
+                ];
+
+                return allRows.map((row) => (
+                  <tr key={row.pointId} className="border-b border-black text-[11px] h-[22px]">
+                    <td className="p-0.5 border-r border-black font-bold">{row.pointId}</td>
+                    <td className="p-0.5 border-r border-black font-mono">{row.distance}</td>
+                    <td className="p-0.5 border-r border-black font-mono font-bold">{row.finalLevel}</td>
+                    <td className="p-0.5 border-r border-black"></td>
+                    <td className="p-0.5 border-r border-black"></td>
+                    <td className="p-0.5 text-left pl-1.5">{row.remark}</td>
+                  </tr>
+                ));
+              })()}
+
+              {/* Summary Rows */}
+              {calculatedData && (
+                <>
+                  <tr className="border-b border-black font-bold text-left h-[22px]">
+                    <td colSpan={2} className="p-1 border-r border-black uppercase">
+                      ELEVATION DIFFERENCE
+                    </td>
+                    <td colSpan={3} className="p-1 border-r border-black font-mono">
+                      {calculatedData.elevationDifference.toFixed(3)} m
+                    </td>
+                    <td className="p-1"></td>
+                  </tr>
+
+                  <tr className="border-b border-black font-bold text-left h-[22px]">
+                    <td colSpan={2} className="p-1 border-r border-black uppercase">
+                      TRACKER ANGLE
+                    </td>
+                    <td colSpan={3} className="p-1 border-r border-black font-mono">
+                      {calculatedData.angleDeg.toFixed(3)}°
+                    </td>
+                    <td className="p-1"></td>
+                  </tr>
+
+                  <tr className="border-b border-black font-bold text-left h-[22px]">
+                    <td colSpan={2} className="p-1 border-r border-black uppercase">
+                      TRACKER TYPE
+                    </td>
+                    <td colSpan={3} className="p-1 border-r border-black">
+                      {calculatedData.trackerType}
+                    </td>
+                    <td className="p-1"></td>
+                  </tr>
+
+                  <tr className="border-b border-black font-bold text-left h-[22px]">
+                    <td colSpan={2} className="p-1 border-r border-black uppercase">
+                      TRACKER LOCATION
+                    </td>
+                    <td colSpan={3} className="p-1 border-r border-black">
+                      {calculatedData.trackerLocation}
+                    </td>
+                    <td className="p-1"></td>
+                  </tr>
+
+                  {/* NOTE Combined Row - Seamlessly attached with no gap */}
+                  <tr className="border-t border-black text-left">
+                    <td colSpan={2} className="p-2 border-r border-black font-bold text-center align-middle uppercase text-[11px]">
+                      NOTE
+                    </td>
+                    <td colSpan={4} className="p-2 h-14 align-top text-gray-800 text-[10px] font-normal">
+                      {notes}
+                    </td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+
+          {/* Footer Sign-off Table directly attached under NOTE table with no gap */}
+          <table className="w-full text-[10.5px] border-collapse border border-black border-t-0 text-center">
+            <thead>
+              <tr className="border-b border-black font-bold bg-gray-100">
+                <th className="p-1 border-r border-black w-[28%] text-left pl-2"></th>
+                <th className="p-1 border-r border-black w-[24%]">Name</th>
+                <th className="p-1 border-r border-black w-[24%]">Designation</th>
+                <th className="p-1 border-r border-black w-[12%]">Date</th>
+                <th className="p-1 w-[12%]">Signature</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-black h-[26px]">
+                <td className="p-1 border-r border-black text-left pl-2 font-bold">Checked by:</td>
+                <td className="p-1 border-r border-black">{checkedByName}</td>
+                <td className="p-1 border-r border-black">{checkedByDesig}</td>
+                <td className="p-1 border-r border-black">{checkedByDate}</td>
+                <td className="p-1"></td>
+              </tr>
+              <tr className="h-[26px]">
+                <td className="p-1 border-r border-black text-left pl-2 font-bold">Approved by:</td>
+                <td className="p-1 border-r border-black">{approvedByName}</td>
+                <td className="p-1 border-r border-black">{approvedByDesig}</td>
+                <td className="p-1 border-r border-black">{approvedByDate}</td>
+                <td className="p-1"></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
