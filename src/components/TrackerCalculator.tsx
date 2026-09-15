@@ -1754,10 +1754,9 @@ export default function TrackerCalculator() {
             <thead>
               <tr className="border-b border-black font-bold bg-gray-100">
                 <th className="p-1 border-r border-black w-[28%] text-left pl-2"></th>
-                <th className="p-1 border-r border-black w-[24%]">Name</th>
-                <th className="p-1 border-r border-black w-[24%]">Designation</th>
-                <th className="p-1 border-r border-black w-[12%]">Date</th>
-                <th className="p-1 w-[12%]">Signature</th>
+                <th className="p-1 border-r border-black w-[36%]">Lakdhanavi Limited</th>
+                <th className="p-1 border-r border-black w-[24%]">Windforce PLC</th>
+                <th className="p-1 w-[12%]">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -1765,15 +1764,13 @@ export default function TrackerCalculator() {
                 <td className="p-1 border-r border-black text-left pl-2 font-bold">Checked by:</td>
                 <td className="p-1 border-r border-black">{checkedByName}</td>
                 <td className="p-1 border-r border-black">{checkedByDesig}</td>
-                <td className="p-1 border-r border-black">{checkedByDate}</td>
-                <td className="p-1"></td>
+                <td className="p-1">{checkedByDate}</td>
               </tr>
               <tr className="h-[26px]">
                 <td className="p-1 border-r border-black text-left pl-2 font-bold">Approved by:</td>
                 <td className="p-1 border-r border-black">{approvedByName}</td>
                 <td className="p-1 border-r border-black">{approvedByDesig}</td>
-                <td className="p-1 border-r border-black">{approvedByDate}</td>
-                <td className="p-1"></td>
+                <td className="p-1">{approvedByDate}</td>
               </tr>
             </tbody>
           </table>
