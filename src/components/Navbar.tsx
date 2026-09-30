@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Calculator, Home, Settings, LogOut, User, Loader2 } from 'lucide-react';
+import { Calculator, Compass, Home, Loader2 } from 'lucide-react';
 
 interface UserSession {
   email: string;
@@ -21,18 +21,6 @@ export default function Navbar() {
     setLoading(false);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const res = await fetch('/api/auth/logout', { method: 'POST' });
-      if (res.ok) {
-        router.push('/login');
-        router.refresh();
-      }
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-  };
-
   if (loading) {
     return (
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-6 text-slate-500">
@@ -45,9 +33,9 @@ export default function Navbar() {
   }
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-6 h-16 flex items-center justify-between shadow-sm text-slate-800">
+    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 md:px-6 h-16 flex items-center justify-between shadow-sm text-slate-800">
       {/* Brand Logo */}
-      <Link href="/" className="flex items-center gap-3 group transition">
+      <Link href="/" className="flex items-center gap-2.5 group transition shrink-0">
         <div className="p-2 bg-[#112E81]/10 group-hover:bg-[#112E81]/20 rounded-xl border border-[#112E81]/20 transition">
           <svg
             className="w-5 h-5 text-[#112E81]"
@@ -64,16 +52,16 @@ export default function Navbar() {
             />
           </svg>
         </div>
-        <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#112E81] to-[#36ADA3]">
+        <span className="font-extrabold text-base md:text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#112E81] to-[#36ADA3]">
           GEOTOPO OPTIMA
         </span>
       </Link>
 
       {/* Navigation */}
-      <nav className="flex items-center gap-1 md:gap-4">
+      <nav className="flex items-center gap-1 md:gap-3">
         <Link
           href="/"
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${
             pathname === '/'
               ? 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
               : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
@@ -85,19 +73,30 @@ export default function Navbar() {
 
         <Link
           href="/tracker"
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-            pathname.startsWith('/tracker')
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${
+            pathname === '/tracker'
               ? 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
               : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
           }`}
         >
-          <Calculator className="w-4 h-4" />
-          <span className="hidden sm:inline">Solar Pile Tracker Innovation Calculator</span>
-          <span className="sm:hidden">Calculator</span>
+          <Calculator className="w-4 h-4 text-sky-600" />
+          <span className="hidden lg:inline">Solar Pile Tracker Innovation Calculator</span>
+          <span className="lg:hidden">Pile Tracker</span>
+        </Link>
+
+        <Link
+          href="/tracker-post-terrain"
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${
+            pathname.startsWith('/tracker-post-terrain')
+              ? 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
+              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+          }`}
+        >
+          <Compass className="w-4 h-4 text-[#36ADA3]" />
+          <span className="hidden lg:inline">Tracker Post Terrain Coordinate Generator</span>
+          <span className="lg:hidden">Terrain Generator</span>
         </Link>
       </nav>
-
-      {/* Auth removed */}
     </header>
   );
 }
