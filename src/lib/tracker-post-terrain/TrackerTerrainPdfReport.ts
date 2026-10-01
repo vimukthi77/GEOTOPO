@@ -166,10 +166,10 @@ export async function exportTrackerTerrainToPdf(
   const cardH = 15;
 
   const paramCards = [
-    { label: 'E1 ELEVATION', val: `${result.E1_m.toFixed(3)} m`, sub: 'Starting Datum' },
-    { label: 'E2 ELEVATION', val: `${result.E2_m.toFixed(3)} m`, sub: 'Ending Datum' },
-    { label: 'ELEVATION ΔE', val: `${result.deltaElevation_m >= 0 ? '+' : ''}${result.deltaElevation_m.toFixed(3)} m`, sub: result.direction },
-    { label: 'TRACKER ANGLE θ', val: `${result.thetaDeg.toFixed(6)}°`, sub: `sin(θ): ${result.sinTheta.toFixed(4)}` },
+    { label: 'E1 & E2 ELEVATION', val: `${result.E1_m.toFixed(3)} → ${result.E2_m.toFixed(3)} m`, sub: `ΔE: ${result.deltaElevation_m >= 0 ? '+' : ''}${result.deltaElevation_m.toFixed(3)} m` },
+    { label: 'SLOPE DIRECTION', val: result.direction, sub: `Angle θ: ${result.thetaDeg.toFixed(6)}°` },
+    { label: 'TRACKER LENGTH (L)', val: `${result.totalLengthM.toFixed(3)} m`, sub: `${result.totalLengthMm} mm` },
+    { label: 'GROUND PROJECTION (Y)', val: `${result.totalHorizontalProjectionM.toFixed(3)} m`, sub: `${result.totalHorizontalProjectionMm.toFixed(1)} mm` },
   ];
 
   paramCards.forEach((card, idx) => {
@@ -179,11 +179,11 @@ export async function exportTrackerTerrainToPdf(
     doc.roundedRect(cx, yPos, cardW, cardH, 1.5, 1.5, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(79, 70, 229);
     doc.text(card.label, cx + 3, yPos + 4.5);
 
-    doc.setFontSize(9.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(17, 24, 39);
     doc.text(card.val, cx + 3, yPos + 9.5);
 
@@ -201,16 +201,16 @@ export async function exportTrackerTerrainToPdf(
   doc.text('TRACKER POST TERRAIN COORDINATE TABLE', margin, yPos);
   yPos += 4;
 
-  const colWidths = [12, 22, 24, 20, 26, 26, 26, 26]; // Total = 182mm (contentWidth = 186mm)
+  const colWidths = [12, 25, 26, 26, 20, 25, 26, 26]; // Total = 186mm (contentWidth = 186mm)
   const headers = [
-    'Point',
-    'Segment (mm)',
-    'Cum. Dist (mm)',
+    'Pile',
+    'Phys Segment (mm)',
+    'Horiz Proj ΔY (mm)',
+    'Cum Ground Y (mm)',
     'X (mm)',
-    'Y (mm)',
+    'Y Ground (mm)',
     'Z Elevation (m)',
-    'ΔY Horiz (mm)',
-    'ΔZ Vert (mm)',
+    'ΔZ Change (mm)',
   ];
 
   // Draw Table Header Row
@@ -218,9 +218,9 @@ export async function exportTrackerTerrainToPdf(
   doc.rect(margin, yPos, contentWidth, 6.5, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
 
-  let curX = margin + 2;
+  let curX = margin + 1.5;
   headers.forEach((h, i) => {
     doc.text(h, curX, yPos + 4.5);
     curX += colWidths[i];
@@ -242,8 +242,8 @@ export async function exportTrackerTerrainToPdf(
       doc.rect(margin, yPos, contentWidth, 6.5, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      let rX = margin + 2;
+      doc.setFontSize(7);
+      let rX = margin + 1.5;
       headers.forEach((h, i) => {
         doc.text(h, rX, yPos + 4.5);
         rX += colWidths[i];
@@ -260,17 +260,17 @@ export async function exportTrackerTerrainToPdf(
     doc.line(margin, yPos + 5.5, margin + contentWidth, yPos + 5.5);
 
     doc.setTextColor(15, 23, 42);
-    let cX = margin + 2;
+    let cX = margin + 1.5;
 
     const values = [
       pt.label,
       pt.segmentLengthMm !== null ? pt.segmentLengthMm.toString() : '-',
-      pt.cumLengthMm.toString(),
+      pt.deltaYMm !== null ? pt.deltaYMm.toFixed(2) : '-',
+      pt.cumGroundYMm.toFixed(2),
       pt.xMm.toFixed(3),
       pt.yMm.toFixed(3),
       pt.zM.toFixed(3),
-      pt.deltaYMm !== null ? pt.deltaYMm.toFixed(3) : '-',
-      pt.deltaZMm !== null ? pt.deltaZMm.toFixed(3) : '-',
+      pt.deltaZMm !== null ? pt.deltaZMm.toFixed(2) : '-',
     ];
 
     values.forEach((v, colIdx) => {
@@ -281,7 +281,38 @@ export async function exportTrackerTerrainToPdf(
     yPos += 5.5;
   });
 
-  yPos += 5;
+  // Append TOTAL / SUM Row at bottom of table
+  if (yPos > pageHeight - 22) {
+    doc.addPage();
+    yPos = margin;
+  }
+
+  doc.setFillColor(224, 242, 254);
+  doc.setDrawColor(186, 230, 253);
+  doc.rect(margin, yPos, contentWidth, 6, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(3, 105, 161);
+
+  let totX = margin + 1.5;
+  const totValues = [
+    'TOTAL',
+    result.totalLengthMm.toString(),
+    result.totalHorizontalProjectionMm.toFixed(2),
+    result.totalHorizontalProjectionMm.toFixed(2),
+    '0.000',
+    result.totalHorizontalProjectionMm.toFixed(2),
+    result.E2_m.toFixed(3),
+    `${result.deltaElevation_mm >= 0 ? '+' : ''}${result.deltaElevation_mm.toFixed(2)}`,
+  ];
+
+  totValues.forEach((v, colIdx) => {
+    doc.text(v, totX, yPos + 4.2);
+    totX += colWidths[colIdx];
+  });
+
+  yPos += 8;
 
   // 5. Engineering QA Validation Box
   if (yPos > pageHeight - 35) {

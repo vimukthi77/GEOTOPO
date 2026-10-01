@@ -6,29 +6,36 @@ import {
 export interface TerrainPointCoordinate {
   pointIndex: number;
   label: string;
-  segmentLengthMm: number | null;
-  segmentLengthM: number | null;
-  cumLengthMm: number;
-  cumLengthM: number;
+  physicalSegmentLengthMm: number | null; // Physical tracker segment length L_i in mm
+  physicalSegmentLengthM: number | null;  // Physical tracker segment length L_i in m
+  segmentLengthMm: number | null;         // Alias for physicalSegmentLengthMm
+  segmentLengthM: number | null;          // Alias for physicalSegmentLengthM
+  groundProjectionMm: number | null;      // Horizontal ground projection ΔY = L_i * cos(θ) in mm
+  groundProjectionM: number | null;       // Horizontal ground projection ΔY in m
+  cumGroundYMm: number;                   // Cumulative horizontal ground location Y in mm
+  cumGroundYM: number;                    // Cumulative horizontal ground location Y in m
+  cumLengthMm: number;                    // Cumulative physical sloped tracker length in mm
+  cumLengthM: number;                     // Cumulative physical sloped tracker length in m
   xM: number;
   xMm: number;
-  yM: number;
-  yMm: number;
-  zM: number;
-  zMm: number;
-  deltaYM: number | null;
-  deltaYMm: number | null;
-  deltaZM: number | null;
-  deltaZMm: number | null;
+  yM: number;                             // Cumulative horizontal ground location Y in m
+  yMm: number;                            // Cumulative horizontal ground location Y in mm
+  zM: number;                             // Elevation Z in m
+  zMm: number;                            // Elevation Z in mm
+  deltaYM: number | null;                 // ΔY in m
+  deltaYMm: number | null;                // ΔY in mm
+  deltaZM: number | null;                 // ΔZ in m
+  deltaZMm: number | null;                // ΔZ in mm
 }
 
 export type DirectionType = 'UP SLOPE' | 'DOWN SLOPE' | 'LEVEL';
 
 export interface TrackerTerrainCalculationInput {
   zoneName: string;
-  trackerId: string; // NEW: Tracker ID (e.g. TRK-01)
-  E1: number; // Starting elevation (m by default)
-  E2: number; // Ending elevation (m by default)
+  trackerId: string; // Tracker ID (e.g. TRK-01)
+  startX?: number;   // Starting X coordinate (default 0.000)
+  E1: number;        // Starting elevation
+  E2: number;        // Ending elevation
   configId: string;
   elevationUnit?: 'm' | 'mm';
   docNo?: string;
@@ -52,6 +59,8 @@ export interface TrackerTerrainCalculationResult {
   trackerId: string;
   docNo: string;
   locationGrid: string;
+  startX_m: number;
+  startX_mm: number;
   E1_m: number;
   E2_m: number;
   E1_mm: number;
@@ -59,8 +68,10 @@ export interface TrackerTerrainCalculationResult {
   deltaElevation_m: number;
   deltaElevation_mm: number;
   absDeltaElevation_m: number;
-  totalLengthMm: number;
-  totalLengthM: number;
+  totalLengthMm: number;                 // Total physical tracker length in mm
+  totalLengthM: number;                  // Total physical tracker length in m
+  totalHorizontalProjectionM: number;    // Total horizontal ground projection footprint Y_total in m
+  totalHorizontalProjectionMm: number;   // Total horizontal ground projection footprint Y_total in mm
   ratio: number;
   thetaRad: number;
   thetaDeg: number;
@@ -68,8 +79,6 @@ export interface TrackerTerrainCalculationResult {
   cosTheta: number;
   tanTheta: number;
   direction: DirectionType;
-  totalHorizontalProjectionM: number;
-  totalHorizontalProjectionMm: number;
   calculatedFinalZM: number;
   calculatedFinalZMm: number;
   endpointErrorM: number;
@@ -87,6 +96,7 @@ export function calculateTrackerCoordinates(
   const {
     zoneName,
     trackerId,
+    startX = 0,
     E1,
     E2,
     configId,
@@ -100,8 +110,10 @@ export function calculateTrackerCoordinates(
     throw new Error(`Invalid tracker configuration ID: ${configId}`);
   }
 
-  // Normalize elevations to meters and millimeters
+  // Normalize elevations and coordinates to meters and millimeters internally
   const unitMultiplier = elevationUnit === 'mm' ? 0.001 : 1;
+  const startX_m = startX * unitMultiplier;
+  const startX_mm = startX_m * 1000;
   const E1_m = E1 * unitMultiplier;
   const E2_m = E2 * unitMultiplier;
   const E1_mm = E1_m * 1000;
@@ -111,11 +123,12 @@ export function calculateTrackerCoordinates(
   const deltaElevation_mm = E2_mm - E1_mm;
   const absDeltaElevation_m = Math.abs(deltaElevation_m);
 
-  const totalLengthMm = config.totalLengthMm;
-  const totalLengthM = config.totalLengthM;
+  // Compute total physical tracker length (hypotenuse) dynamically from segment array in mm
+  const totalLengthMm = config.segmentLengths.reduce((sum, len) => sum + len, 0);
+  const totalLengthM = totalLengthMm / 1000;
 
-  // Validate ratio for ASIN: ratio = deltaE / totalLength
-  const ratio = deltaElevation_m / totalLengthM;
+  // Validate ratio for ASIN: sin(θ) = ΔE / L_total
+  const ratio = deltaElevation_mm / totalLengthMm;
 
   // Check valid ratio range [-1, 1]
   const isValidRatio = !isNaN(ratio) && ratio >= -1 && ratio <= 1;
@@ -124,7 +137,7 @@ export function calculateTrackerCoordinates(
 
   if (!isValidRatio) {
     const errorMsg =
-      'Invalid elevation difference for the selected tracker geometry. The E1/E2 difference is greater than the available tracker length.';
+      'Invalid elevation difference for the selected tracker geometry. The E1/E2 difference is greater than the available total physical tracker length.';
     return {
       isValid: false,
       errorMessage: errorMsg,
@@ -134,6 +147,8 @@ export function calculateTrackerCoordinates(
       trackerId: trackerId || 'TRK-01',
       docNo,
       locationGrid,
+      startX_m,
+      startX_mm,
       E1_m,
       E2_m,
       E1_mm,
@@ -170,7 +185,7 @@ export function calculateTrackerCoordinates(
           name: 'Elevation Difference vs Length Check',
           passed: false,
           message: errorMsg,
-          details: `ΔE = ${deltaElevation_m.toFixed(4)}m, Tracker Length = ${totalLengthM.toFixed(4)}m, Ratio = ${ratio.toFixed(4)}`,
+          details: `ΔE = ${deltaElevation_m.toFixed(4)}m, Physical Tracker Length = ${totalLengthM.toFixed(4)}m, Ratio = ${ratio.toFixed(4)}`,
         },
       ],
       timestamp: new Date().toISOString(),
@@ -179,6 +194,7 @@ export function calculateTrackerCoordinates(
   }
 
   // Calculate inclination angle θ using ASIN (inclined tracker beam geometry)
+  // sin(θ) = ΔE / L_total => θ = ASIN(ΔE / L_total)
   const thetaRad = Math.asin(ratio);
   const thetaDeg = (thetaRad * 180) / Math.PI;
   const sinTheta = Math.sin(thetaRad);
@@ -193,19 +209,25 @@ export function calculateTrackerCoordinates(
     direction = 'DOWN SLOPE';
   }
 
-  // Generate pile coordinates sequentially using full double-precision floating point math
+  // Generate pile coordinates sequentially using 64-bit floating point math
   const points: TerrainPointCoordinate[] = [];
 
   // Starting Point P1
   points.push({
     pointIndex: 1,
     label: 'P1',
+    physicalSegmentLengthMm: null,
+    physicalSegmentLengthM: null,
     segmentLengthMm: null,
     segmentLengthM: null,
+    groundProjectionMm: null,
+    groundProjectionM: null,
+    cumGroundYMm: 0,
+    cumGroundYM: 0,
     cumLengthMm: 0,
     cumLengthM: 0,
-    xM: 0,
-    xMm: 0,
+    xM: startX_m,
+    xMm: startX_mm,
     yM: 0,
     yMm: 0,
     zM: E1_m,
@@ -216,10 +238,10 @@ export function calculateTrackerCoordinates(
     deltaZMm: null,
   });
 
-  let currentCumMm = 0;
-  let currentCumM = 0;
-  let currentYM = 0;
-  let currentYMm = 0;
+  let currentPhysicalCumMm = 0;
+  let currentPhysicalCumM = 0;
+  let currentGroundYMm = 0;
+  let currentGroundYM = 0;
   let currentZM = E1_m;
   let currentZMm = E1_mm;
 
@@ -227,17 +249,19 @@ export function calculateTrackerCoordinates(
     const segMm = config.segmentLengths[i];
     const segM = segMm / 1000;
 
+    // 90-Degree Horizontal projection: ΔY_i = L_i * cos(θ)
     const deltaYMm = segMm * cosTheta;
     const deltaYM = segM * cosTheta;
 
+    // Vertical elevation change: ΔZ_i = L_i * sin(θ)
     const deltaZMm = segMm * sinTheta;
     const deltaZM = segM * sinTheta;
 
-    currentCumMm += segMm;
-    currentCumM += segM;
+    currentPhysicalCumMm += segMm;
+    currentPhysicalCumM += segM;
 
-    currentYMm += deltaYMm;
-    currentYM += deltaYM;
+    currentGroundYMm += deltaYMm;
+    currentGroundYM += deltaYM;
 
     currentZMm += deltaZMm;
     currentZM += deltaZM;
@@ -245,14 +269,20 @@ export function calculateTrackerCoordinates(
     points.push({
       pointIndex: i + 2,
       label: `P${i + 2}`,
+      physicalSegmentLengthMm: segMm,
+      physicalSegmentLengthM: segM,
       segmentLengthMm: segMm,
       segmentLengthM: segM,
-      cumLengthMm: currentCumMm,
-      cumLengthM: currentCumM,
-      xM: 0,
-      xMm: 0,
-      yM: currentYM,
-      yMm: currentYMm,
+      groundProjectionMm: deltaYMm,
+      groundProjectionM: deltaYM,
+      cumGroundYMm: currentGroundYMm,
+      cumGroundYM: currentGroundYM,
+      cumLengthMm: currentPhysicalCumMm,
+      cumLengthM: currentPhysicalCumM,
+      xM: startX_m,
+      xMm: startX_mm,
+      yM: currentGroundYM,
+      yMm: currentGroundYMm,
       zM: currentZM,
       zMm: currentZMm,
       deltaYM: deltaYM,
@@ -264,14 +294,14 @@ export function calculateTrackerCoordinates(
 
   const calculatedFinalZM = currentZM;
   const calculatedFinalZMm = currentZMm;
-  const totalHorizontalProjectionM = currentYM;
-  const totalHorizontalProjectionMm = currentYMm;
+  const totalHorizontalProjectionM = currentGroundYM;
+  const totalHorizontalProjectionMm = currentGroundYMm;
 
   const endpointErrorM = Math.abs(calculatedFinalZM - E2_m);
   const endpointErrorMm = Math.abs(calculatedFinalZMm - E2_mm);
 
-  // Endpoint QA check tolerance: <= 0.001 m (1 mm)
-  const endpointValidationPass = endpointErrorM <= 0.001;
+  // Endpoint QA check tolerance: <= 1 mm (0.001 m)
+  const endpointValidationPass = endpointErrorMm <= 1.0;
 
   // QA Validations list
   const validations: TrackerTerrainValidationCheck[] = [
@@ -318,8 +348,8 @@ export function calculateTrackerCoordinates(
     {
       id: 'length',
       name: 'Total Length Check',
-      passed: Math.abs(currentCumMm - totalLengthMm) < 0.01,
-      message: `Total inclined length sum = ${totalLengthMm} mm (${totalLengthM.toFixed(3)} m)`,
+      passed: Math.abs(currentPhysicalCumMm - totalLengthMm) < 0.01,
+      message: `Total inclined physical length sum = ${totalLengthMm} mm (${totalLengthM.toFixed(3)} m)`,
     },
   ];
 

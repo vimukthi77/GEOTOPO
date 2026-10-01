@@ -40,9 +40,10 @@ import {
 export default function TrackerPostTerrainPage() {
   // Input states
   const [zoneName, setZoneName] = useState<string>('Zone A');
-  const [trackerId, setTrackerId] = useState<string>('TRK-01'); // NEW: Tracker ID right after Zone Name
+  const [trackerId, setTrackerId] = useState<string>('TRK-01'); // Tracker ID right after Zone Name
   const [locationGrid, setLocationGrid] = useState<string>('Grid A-1');
   const [docNo, setDocNo] = useState<string>('DOC-TRK-001');
+  const [startX, setStartX] = useState<string>('0.000'); // Starting X Coordinate (X1)
   const [E1, setE1] = useState<string>('100.000');
   const [E2, setE2] = useState<string>('101.500');
   const [selectedConfigId, setSelectedConfigId] = useState<string>('2S-CORNER');
@@ -69,8 +70,14 @@ export default function TrackerPostTerrainPage() {
       return;
     }
 
+    const startXNum = parseFloat(startX);
     const e1Num = parseFloat(E1);
     const e2Num = parseFloat(E2);
+
+    if (isNaN(startXNum)) {
+      setValidationError('Starting X Coordinate must be a valid numeric value.');
+      return;
+    }
 
     if (isNaN(e1Num)) {
       setValidationError('E1 Elevation must be a valid numeric value.');
@@ -87,6 +94,7 @@ export default function TrackerPostTerrainPage() {
       trackerId: trackerId.trim(),
       docNo: docNo.trim() || 'DOC-TRK-001',
       locationGrid: locationGrid.trim() || 'Grid A-1',
+      startX: startXNum,
       E1: e1Num,
       E2: e2Num,
       configId: selectedConfigId,
@@ -266,8 +274,26 @@ export default function TrackerPostTerrainPage() {
           </div>
         </div>
 
-        {/* Inputs Grid: E1, E2, Elevation Unit */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 border-t border-slate-800/80">
+        {/* Inputs Grid: X1 Starting X, E1, E2, Elevation Unit */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2 border-t border-slate-800/80">
+          {/* Starting X Coordinate (X1) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-2 font-black">
+              <Ruler className="w-3.5 h-3.5 text-teal-400" />
+              <span>X1 Starting X ({elevationUnit}) *</span>
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={startX}
+              onChange={(e) => setStartX(e.target.value)}
+              placeholder="e.g. 0.000"
+              required
+              className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-teal-500/40 text-teal-200 font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-teal-400 text-sm transition shadow-inner"
+            />
+            <p className="text-[11px] text-teal-300/80 font-semibold">Starting X coordinate datum for piles</p>
+          </div>
+
           {/* E1 Elevation */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
@@ -304,11 +330,11 @@ export default function TrackerPostTerrainPage() {
             <p className="text-[11px] text-slate-500">Ending pile post elevation datum</p>
           </div>
 
-          {/* Elevation Unit Selector */}
+          {/* Elevation & Coordinate Unit Selector */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Compass className="w-3.5 h-3.5 text-purple-400" />
-              <span>Input Elevation Unit</span>
+              <span>Input Unit (X, E1, E2)</span>
             </label>
             <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800 h-[46px] items-center">
               <button
@@ -334,7 +360,7 @@ export default function TrackerPostTerrainPage() {
                 Millimeters (mm)
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">Unit for E1 and E2 inputs</p>
+            <p className="text-[11px] text-slate-500">Unit for X, E1, and E2 inputs</p>
           </div>
         </div>
 
@@ -348,54 +374,156 @@ export default function TrackerPostTerrainPage() {
             <span className="text-xs text-slate-400">Locked engineering segment matrices</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {TRACKER_TERRAIN_CONFIG_LIST.map((cfg) => {
-              const isSelected = cfg.id === selectedConfigId;
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 2 String Column: Corner on top, Internal under */}
+            <div className="space-y-4">
+              {['2S-CORNER', '2S-INTERNAL'].map((cfgId) => {
+                const cfg = TRACKER_TERRAIN_CONFIGS[cfgId];
+                const isSelected = cfg.id === selectedConfigId;
+                return (
+                  <button
+                    type="button"
+                    key={cfg.id}
+                    onClick={() => setSelectedConfigId(cfg.id)}
+                    className={`w-full p-5 rounded-2xl text-left border transition-all duration-200 cursor-pointer relative overflow-hidden group ${
+                      isSelected
+                        ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-[#112E81]/50 border-teal-500 shadow-xl shadow-teal-500/10 ring-2 ring-teal-500/40'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-950/90'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
+                          {cfg.stringCount} String • {cfg.position}
+                        </span>
+                        <h3 className="text-lg font-extrabold text-white mt-0.5">{cfg.name}</h3>
+                      </div>
+                      <div
+                        className={`w-6 h-6 rounded-full border flex items-center justify-center transition ${
+                          isSelected
+                            ? 'bg-teal-500 border-teal-400 text-slate-950'
+                            : 'border-slate-700 bg-slate-900 text-transparent'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                    </div>
 
-              return (
-                <button
-                  type="button"
-                  key={cfg.id}
-                  onClick={() => setSelectedConfigId(cfg.id)}
-                  className={`p-5 rounded-2xl text-left border transition-all duration-200 cursor-pointer relative overflow-hidden group ${
-                    isSelected
-                      ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-[#112E81]/50 border-teal-500 shadow-xl shadow-teal-500/10 ring-2 ring-teal-500/40'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-950/90'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
-                        {cfg.stringCount} String • {cfg.position}
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.pileCount} Piles
                       </span>
-                      <h3 className="text-lg font-extrabold text-white mt-0.5">{cfg.name}</h3>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.segmentCount} Segments
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 font-bold text-teal-300">
+                        {cfg.totalLengthMm.toLocaleString()} mm ({cfg.totalLengthM.toFixed(3)}m)
+                      </span>
                     </div>
-                    <div
-                      className={`w-6 h-6 rounded-full border flex items-center justify-center transition ${
-                        isSelected
-                          ? 'bg-teal-500 border-teal-400 text-slate-950'
-                          : 'border-slate-700 bg-slate-900 text-transparent'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                  </div>
+                  </button>
+                );
+              })}
+            </div>
 
-                  {/* Badges Strip */}
-                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs">
-                    <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
-                      {cfg.pileCount} Piles
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
-                      {cfg.segmentCount} Segments
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 font-bold text-teal-300">
-                      {cfg.totalLengthMm.toLocaleString()} mm ({cfg.totalLengthM.toFixed(3)}m)
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+            {/* 3 String Column: Corner on top, Internal under */}
+            <div className="space-y-4">
+              {['3S-CORNER', '3S-INTERNAL'].map((cfgId) => {
+                const cfg = TRACKER_TERRAIN_CONFIGS[cfgId];
+                const isSelected = cfg.id === selectedConfigId;
+                return (
+                  <button
+                    type="button"
+                    key={cfg.id}
+                    onClick={() => setSelectedConfigId(cfg.id)}
+                    className={`w-full p-5 rounded-2xl text-left border transition-all duration-200 cursor-pointer relative overflow-hidden group ${
+                      isSelected
+                        ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-[#112E81]/50 border-teal-500 shadow-xl shadow-teal-500/10 ring-2 ring-teal-500/40'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-950/90'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
+                          {cfg.stringCount} String • {cfg.position}
+                        </span>
+                        <h3 className="text-lg font-extrabold text-white mt-0.5">{cfg.name}</h3>
+                      </div>
+                      <div
+                        className={`w-6 h-6 rounded-full border flex items-center justify-center transition ${
+                          isSelected
+                            ? 'bg-teal-500 border-teal-400 text-slate-950'
+                            : 'border-slate-700 bg-slate-900 text-transparent'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.pileCount} Piles
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.segmentCount} Segments
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 font-bold text-teal-300">
+                        {cfg.totalLengthMm.toLocaleString()} mm ({cfg.totalLengthM.toFixed(3)}m)
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 4 String Column: Corner on top, Internal under */}
+            <div className="space-y-4">
+              {['4S-CORNER', '4S-INTERNAL'].map((cfgId) => {
+                const cfg = TRACKER_TERRAIN_CONFIGS[cfgId];
+                const isSelected = cfg.id === selectedConfigId;
+                return (
+                  <button
+                    type="button"
+                    key={cfg.id}
+                    onClick={() => setSelectedConfigId(cfg.id)}
+                    className={`w-full p-5 rounded-2xl text-left border transition-all duration-200 cursor-pointer relative overflow-hidden group ${
+                      isSelected
+                        ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-[#112E81]/50 border-teal-500 shadow-xl shadow-teal-500/10 ring-2 ring-teal-500/40'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-950/90'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
+                          {cfg.stringCount} String • {cfg.position}
+                        </span>
+                        <h3 className="text-lg font-extrabold text-white mt-0.5">{cfg.name}</h3>
+                      </div>
+                      <div
+                        className={`w-6 h-6 rounded-full border flex items-center justify-center transition ${
+                          isSelected
+                            ? 'bg-teal-500 border-teal-400 text-slate-950'
+                            : 'border-slate-700 bg-slate-900 text-transparent'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.pileCount} Piles
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 font-semibold text-slate-300">
+                        {cfg.segmentCount} Segments
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 font-bold text-teal-300">
+                        {cfg.totalLengthMm.toLocaleString()} mm ({cfg.totalLengthM.toFixed(3)}m)
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -575,43 +703,34 @@ export default function TrackerPostTerrainPage() {
 
             <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                ZONE
+                PHYSICAL LENGTH (L)
               </span>
-              <span className="text-lg font-extrabold text-white truncate block mt-1">
-                {result.zoneName}
-              </span>
-            </div>
-
-            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                TRACKER TYPE
-              </span>
-              <span className="text-sm font-extrabold text-teal-300 truncate block mt-1">
-                {result.config.name}
-              </span>
-            </div>
-
-            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                TOTAL LENGTH
-              </span>
-              <span className="text-lg font-extrabold text-sky-300 mt-1 block font-mono">
+              <span className="text-lg font-extrabold text-sky-300 mt-1 block font-mono" title="Total Physical Sloped Tracker Length">
                 {result.totalLengthM.toFixed(3)} m
               </span>
             </div>
 
+            <div className="p-4 bg-slate-900/90 border border-[#36ADA3]/40 bg-teal-950/20 rounded-2xl backdrop-blur-md">
+              <span className="text-[11px] font-bold text-teal-300 uppercase tracking-wider block">
+                GROUND PROJECTION (Y)
+              </span>
+              <span className="text-lg font-extrabold text-teal-200 mt-1 block font-mono" title="Total 90° Horizontal Ground Projection Footprint">
+                {result.totalHorizontalProjectionM.toFixed(3)} m
+              </span>
+            </div>
+
             <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                ANGLE θ
+                TRACKER ANGLE θ
               </span>
-              <span className="text-lg font-extrabold text-amber-300 mt-1 block font-mono">
+              <span className="text-lg font-extrabold text-amber-300 mt-1 block font-mono" title="θ = ASIN(ΔE / L_total)">
                 {result.thetaDeg.toFixed(6)}°
               </span>
             </div>
 
             <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                DIRECTION
+                SLOPE DIRECTION
               </span>
               <span
                 className={`text-sm font-extrabold mt-1 block ${
@@ -625,7 +744,22 @@ export default function TrackerPostTerrainPage() {
                 {result.direction}
               </span>
             </div>
+
+            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                ENDPOINT QA
+              </span>
+              <span
+                className={`text-sm font-extrabold mt-1 block ${
+                  result.endpointValidationPass ? 'text-emerald-400' : 'text-amber-400'
+                }`}
+              >
+                {result.endpointValidationPass ? '✓ PASS (≤1mm)' : '⚠ CHECK'}
+              </span>
+            </div>
           </div>
+
+
 
           {/* Secondary Metric Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">

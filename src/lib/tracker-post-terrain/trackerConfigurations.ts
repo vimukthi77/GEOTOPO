@@ -20,9 +20,9 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     pileCount: 8,
     segmentCount: 7,
     segmentLengths: [8050, 9200, 9200, 9200, 8850, 8850, 7900],
-    totalLengthMm: 60050,
-    totalLengthM: 60.05,
-    description: '2-String Corner array configuration with 8 pile points across 7 inclined segments.',
+    totalLengthMm: 61250,
+    totalLengthM: 61.25,
+    description: '2-String Corner array configuration with 8 pile points across 7 physical inclined segments.',
   },
   '2S-INTERNAL': {
     id: '2S-INTERNAL',
@@ -34,7 +34,7 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     segmentLengths: [6800, 8050, 8050, 7700, 7700, 8050, 8050, 6800],
     totalLengthMm: 61200,
     totalLengthM: 61.2,
-    description: '2-String Internal array configuration with 9 pile points across 8 inclined segments.',
+    description: '2-String Internal array configuration with 9 pile points across 8 physical inclined segments.',
   },
   '3S-CORNER': {
     id: '3S-CORNER',
@@ -46,7 +46,7 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     segmentLengths: [9200, 9200, 9200, 9200, 8850, 8850, 9200, 9200, 9200, 9200],
     totalLengthMm: 91700,
     totalLengthM: 91.7,
-    description: '3-String Corner array configuration with 11 pile points across 10 inclined segments.',
+    description: '3-String Corner array configuration with 11 pile points across 10 physical inclined segments.',
   },
   '3S-INTERNAL': {
     id: '3S-INTERNAL',
@@ -58,7 +58,7 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     segmentLengths: [7850, 9200, 9200, 8050, 8050, 8050, 8050, 8850, 8850, 9200, 7850],
     totalLengthMm: 93200,
     totalLengthM: 93.2,
-    description: '3-String Internal array configuration with 12 pile points across 11 inclined segments.',
+    description: '3-String Internal array configuration with 12 pile points across 11 physical inclined segments.',
   },
   '4S-CORNER': {
     id: '4S-CORNER',
@@ -70,7 +70,7 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     segmentLengths: [8050, 9200, 8050, 8050, 9200, 9200, 9200, 9200, 8850, 8850, 9200, 9200, 9200, 8050],
     totalLengthMm: 122950,
     totalLengthM: 122.95,
-    description: '4-String Corner array configuration with 15 pile points across 14 inclined segments.',
+    description: '4-String Corner array configuration with 15 pile points across 14 physical inclined segments.',
   },
   '4S-INTERNAL': {
     id: '4S-INTERNAL',
@@ -82,7 +82,7 @@ export const TRACKER_TERRAIN_CONFIGS: Record<string, TrackerTerrainConfig> = {
     segmentLengths: [7800, 8050, 8050, 9200, 9200, 8050, 8050, 8050, 8050, 8850, 8850, 9200, 8050, 8050, 7800],
     totalLengthMm: 124100,
     totalLengthM: 124.1,
-    description: '4-String Internal array configuration with 16 pile points across 15 inclined segments.',
+    description: '4-String Internal array configuration with 16 pile points across 15 physical inclined segments.',
   },
 };
 

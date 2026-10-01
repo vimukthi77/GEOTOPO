@@ -15,6 +15,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     totalLengthMm,
     totalLengthM,
     totalHorizontalProjectionM,
+    totalHorizontalProjectionMm,
     thetaDeg,
     direction,
     calculatedFinalZM,
@@ -60,14 +61,14 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     // Point Coordinate Table Header
     ['TRACKER POST TERRAIN COORDINATE TABLE'],
     [
-      'Point',
-      'Segment Length (mm)',
-      'Cumulative Length (mm)',
+      'Pile',
+      'Physical Tracker Segment Length (mm)',
+      'Horizontal Ground Projection (mm)',
+      'Cumulative Ground Location (mm)',
       'X (mm)',
-      'Y (mm)',
+      'Y Ground (mm)',
       'Z Elevation (m)',
-      'ΔY Horiz (mm)',
-      'ΔZ Vert (mm)',
+      'ΔZ Elevation Change (mm)',
     ],
   ];
 
@@ -76,14 +77,26 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     masterReportData.push([
       p.label,
       p.segmentLengthMm !== null ? p.segmentLengthMm : '—',
-      p.cumLengthMm,
+      p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '—',
+      p.cumGroundYMm.toFixed(3),
       p.xMm.toFixed(3),
       p.yMm.toFixed(3),
       p.zM.toFixed(3),
-      p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '—',
       p.deltaZMm !== null ? p.deltaZMm.toFixed(3) : '—',
     ]);
   });
+
+  // Append TOTAL / SUM row for Coordinate Table
+  masterReportData.push([
+    'TOTAL / SUM',
+    totalLengthMm,
+    totalHorizontalProjectionMm.toFixed(3),
+    totalHorizontalProjectionMm.toFixed(3),
+    '0.000',
+    totalHorizontalProjectionMm.toFixed(3),
+    E2_m.toFixed(3),
+    `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
+  ]);
 
   // Append Blank Row & Engineering QA Check Section
   masterReportData.push(
@@ -91,7 +104,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     ['ENGINEERING QA & ENDPOINT VALIDATION'],
     ['Check Item', 'Calculated Value', 'Target / Tolerance', 'Status'],
     [
-      'Total Segment Length Sum',
+      'Total Physical Segment Length Sum',
       `${totalLengthMm} mm (${totalLengthM.toFixed(3)} m)`,
       `${config.totalLengthMm} mm`,
       'PASS',
@@ -121,13 +134,13 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
   // Set Column Widths for Checklist Sheet
   wsChecklist['!cols'] = [
     { wch: 14 },
-    { wch: 24 },
-    { wch: 24 },
+    { wch: 32 },
+    { wch: 32 },
+    { wch: 32 },
     { wch: 16 },
     { wch: 18 },
     { wch: 20 },
-    { wch: 22 },
-    { wch: 22 },
+    { wch: 24 },
   ];
 
   // Set Cell Merges for Header Titles & Grid
@@ -154,29 +167,43 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
   // SHEET 2: RAW COORDINATES DATA (FOR CAD & SITE TEAMS)
   // ----------------------------------------------------
   const rawCoordHeaders = [
-    'Point',
-    'Segment Length (mm)',
-    'Cumulative Length (mm)',
+    'Pile',
+    'Physical Tracker Segment Length (mm)',
+    'Horizontal Ground Projection (mm)',
+    'Cumulative Ground Location (mm)',
     'X (mm)',
-    'Y (mm)',
-    'Z (mm)',
-    'Y (m)',
-    'Z (m)',
-    'Horizontal Increment ΔY (mm)',
-    'Vertical Increment ΔZ (mm)',
+    'Y Ground (mm)',
+    'Z Elevation (mm)',
+    'Y Ground (m)',
+    'Z Elevation (m)',
+    'Vertical Elevation Change ΔZ (mm)',
   ];
 
   const rawCoordRows = points.map((p) => [
     p.label,
     p.segmentLengthMm !== null ? p.segmentLengthMm : '-',
-    p.cumLengthMm,
+    p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '-',
+    p.cumGroundYMm.toFixed(3),
     p.xMm.toFixed(3),
     p.yMm.toFixed(3),
     p.zMm.toFixed(3),
     p.yM.toFixed(3),
     p.zM.toFixed(3),
-    p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '-',
     p.deltaZMm !== null ? p.deltaZMm.toFixed(3) : '-',
+  ]);
+
+  // Append TOTAL row to Sheet 2
+  rawCoordRows.push([
+    'TOTAL / SUM',
+    totalLengthMm,
+    totalHorizontalProjectionMm.toFixed(3),
+    totalHorizontalProjectionMm.toFixed(3),
+    '0.000',
+    totalHorizontalProjectionMm.toFixed(3),
+    (calculatedFinalZM * 1000).toFixed(3),
+    totalHorizontalProjectionM.toFixed(3),
+    E2_m.toFixed(3),
+    `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
   ]);
 
   const wsRawCoordinates = XLSX.utils.aoa_to_sheet([rawCoordHeaders, ...rawCoordRows]);

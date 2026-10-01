@@ -17,12 +17,16 @@ import {
 import { TrackerTerrainCalculationResult } from '@/lib/tracker-post-terrain/calculateTrackerCoordinates';
 import { Layers, Activity, BarChart2, TrendingUp, Compass } from 'lucide-react';
 
+import { useTheme } from '@/context/ThemeContext';
+
 interface ElevationProfileChartProps {
   result: TrackerTerrainCalculationResult;
 }
 
 export default function ElevationProfileChart({ result }: ElevationProfileChartProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'cumulative' | 'deltaY' | 'deltaZ'>('profile');
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   // Chart 1 & 2 Data: Profile & Cumulative Distance
   const lineChartData = result.points.map((pt) => ({
@@ -49,35 +53,56 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
   const zMax = Math.max(...result.points.map((p) => p.zM));
   const zPadding = Math.max(0.5, (zMax - zMin) * 0.25);
 
+  const gridColor = isDark ? '#334155' : '#E2E8F0';
+  const axisColor = isDark ? '#94A3B8' : '#64748B';
+  const labelColor = isDark ? '#CBD5E1' : '#334155';
+  const tooltipBg = isDark ? '#0F172A' : '#FFFFFF';
+  const tooltipBorder = isDark ? '#334155' : '#E2E8F0';
+  const tooltipText = isDark ? '#F8FAFC' : '#0F172A';
+
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 md:p-7 shadow-2xl backdrop-blur-xl text-slate-100 space-y-6">
+    <div
+      className={`border rounded-3xl p-5 md:p-7 shadow-2xl backdrop-blur-xl space-y-6 transition-colors duration-200 ${
+        isDark ? 'bg-slate-900/90 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900 shadow-xl'
+      }`}
+    >
       {/* Header & Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div
+        className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5 ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
+        }`}
+      >
         <div>
-          <div className="flex items-center gap-2 text-teal-400 font-bold text-xs uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-teal-500 font-bold text-xs uppercase tracking-wider">
             <Activity className="w-4 h-4 text-[#36ADA3]" />
             <span>Interactive Visualizations</span>
           </div>
-          <h3 className="text-xl font-extrabold text-white mt-1">
-            Engineering Profile &amp; Segment Dynamics
+          <h3 className={`text-xl font-extrabold mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Tracker Pile Ground Location &amp; Elevation Profile
           </h3>
-          <p className="text-xs text-slate-400">
-            Zone: <span className="text-slate-200 font-semibold">{result.zoneName}</span> • Config: <span className="text-slate-200 font-semibold">{result.config.name}</span>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Zone: <span className="font-semibold">{result.zoneName}</span> • Config: <span className="font-semibold">{result.config.name}</span> • X-Axis: <span className="text-teal-500 font-semibold">Horizontal Ground Location Y (m)</span>
           </p>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-slate-800/80">
+        <div
+          className={`flex flex-wrap gap-1.5 p-1 rounded-2xl border ${
+            isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-100 border-slate-200'
+          }`}
+        >
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === 'profile'
                 ? 'bg-gradient-to-r from-[#112E81] to-[#36ADA3] text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : isDark
+                ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>Elevation Profile</span>
+            <span>Ground Location Profile</span>
           </button>
 
           <button
@@ -85,11 +110,13 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === 'cumulative'
                 ? 'bg-gradient-to-r from-[#112E81] to-[#36ADA3] text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : isDark
+                ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
-            <span>Cum. Dist vs Elevation</span>
+            <span>Sloped Dist vs Elevation</span>
           </button>
 
           <button
@@ -97,7 +124,9 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === 'deltaY'
                 ? 'bg-gradient-to-r from-[#112E81] to-[#36ADA3] text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : isDark
+                ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
             <BarChart2 className="w-3.5 h-3.5" />
@@ -109,7 +138,9 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === 'deltaZ'
                 ? 'bg-gradient-to-r from-[#112E81] to-[#36ADA3] text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : isDark
+                ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -123,23 +154,23 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
         {activeTab === 'profile' && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData} margin={{ top: 20, right: 30, left: 10, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.6} />
               <XAxis
                 dataKey="yM"
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v}m`}
-                label={{ value: 'Horizontal Coordinate Y (m)', position: 'insideBottom', offset: -15, fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Horizontal Ground Location Y (m)', position: 'insideBottom', offset: -15, fill: labelColor, fontSize: 12 }}
               />
               <YAxis
                 domain={[zMin - zPadding, zMax + zPadding]}
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v.toFixed(2)}m`}
-                label={{ value: 'Elevation Z (m)', angle: -90, position: 'insideLeft', fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Elevation Z (m)', angle: -90, position: 'insideLeft', fill: labelColor, fontSize: 12 }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#F8FAFC' }}
+                contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', color: tooltipText }}
                 formatter={(value: any) => [`${value} m`, 'Elevation Z']}
                 labelFormatter={(label) => `Y Coordinate: ${label} m`}
               />
@@ -160,23 +191,23 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
         {activeTab === 'cumulative' && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData} margin={{ top: 20, right: 30, left: 10, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.6} />
               <XAxis
                 dataKey="cumDistM"
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v}m`}
-                label={{ value: 'Cumulative Sloped Tracker Distance (m)', position: 'insideBottom', offset: -15, fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Cumulative Sloped Tracker Distance (m)', position: 'insideBottom', offset: -15, fill: labelColor, fontSize: 12 }}
               />
               <YAxis
                 domain={[zMin - zPadding, zMax + zPadding]}
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v.toFixed(2)}m`}
-                label={{ value: 'Elevation Z (m)', angle: -90, position: 'insideLeft', fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Elevation Z (m)', angle: -90, position: 'insideLeft', fill: labelColor, fontSize: 12 }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#F8FAFC' }}
+                contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', color: tooltipText }}
                 formatter={(value: any) => [`${value} m`, 'Elevation Z']}
                 labelFormatter={(label) => `Cum. Distance: ${label} m`}
               />
@@ -196,16 +227,16 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
         {activeTab === 'deltaY' && (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={segmentData} margin={{ top: 20, right: 30, left: 10, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} />
-              <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} angle={-20} textAnchor="end" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.6} />
+              <XAxis dataKey="name" stroke={axisColor} fontSize={10} angle={-20} textAnchor="end" />
               <YAxis
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v}mm`}
-                label={{ value: 'Horizontal Increment ΔY (mm)', angle: -90, position: 'insideLeft', fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Horizontal Increment ΔY (mm)', angle: -90, position: 'insideLeft', fill: labelColor, fontSize: 12 }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#F8FAFC' }}
+                contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', color: tooltipText }}
                 formatter={(value: any) => [`${value} mm`, 'ΔY Horizontal']}
               />
               <Legend verticalAlign="top" height={36} />
@@ -217,16 +248,16 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
         {activeTab === 'deltaZ' && (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={segmentData} margin={{ top: 20, right: 30, left: 10, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} />
-              <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} angle={-20} textAnchor="end" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.6} />
+              <XAxis dataKey="name" stroke={axisColor} fontSize={10} angle={-20} textAnchor="end" />
               <YAxis
-                stroke="#94A3B8"
+                stroke={axisColor}
                 fontSize={11}
                 tickFormatter={(v) => `${v}mm`}
-                label={{ value: 'Vertical Elevation Increment ΔZ (mm)', angle: -90, position: 'insideLeft', fill: '#CBD5E1', fontSize: 12 }}
+                label={{ value: 'Vertical Elevation Increment ΔZ (mm)', angle: -90, position: 'insideLeft', fill: labelColor, fontSize: 12 }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#F8FAFC' }}
+                contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', color: tooltipText }}
                 formatter={(value: any) => [`${value} mm`, 'ΔZ Vertical']}
               />
               <Legend verticalAlign="top" height={36} />
@@ -237,12 +268,16 @@ export default function ElevationProfileChart({ result }: ElevationProfileChartP
       </div>
 
       {/* Footer Info Pill */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/70 text-xs text-slate-400">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 pt-3 border-t text-xs ${
+          isDark ? 'border-slate-800/70 text-slate-400' : 'border-slate-200 text-slate-500'
+        }`}
+      >
         <div>
-          Angle θ = <span className="text-teal-300 font-mono font-bold">{result.thetaDeg.toFixed(6)}°</span> • Projection Y = <span className="text-slate-200 font-mono font-bold">{result.totalHorizontalProjectionM.toFixed(3)} m</span>
+          Angle θ = <span className="text-teal-600 dark:text-teal-300 font-mono font-bold">{result.thetaDeg.toFixed(6)}°</span> • Projection Y = <span className="font-mono font-bold">{result.totalHorizontalProjectionM.toFixed(3)} m</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
           <span>Real-time Engineering Charting Engine</span>
         </div>
       </div>
