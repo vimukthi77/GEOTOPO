@@ -361,6 +361,8 @@ export function calculateTrackerCoordinates(
     trackerId: trackerId || 'TRK-01',
     docNo: docNo || 'DOC-TRK-001',
     locationGrid: locationGrid || 'Grid A-1',
+    startX_m,
+    startX_mm,
     E1_m,
     E2_m,
     E1_mm,
