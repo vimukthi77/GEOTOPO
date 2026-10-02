@@ -44,6 +44,8 @@ export default function TrackerPostTerrainPage() {
   const [locationGrid, setLocationGrid] = useState<string>('Grid A-1');
   const [docNo, setDocNo] = useState<string>('DOC-TRK-001');
   const [startX, setStartX] = useState<string>('0.000'); // Starting X Coordinate (X1)
+  const [startY, setStartY] = useState<string>('0.000'); // Starting Y Coordinate (Y1)
+  const [yDirection, setYDirection] = useState<'DECREASING (-)' | 'INCREASING (+)'>('DECREASING (-)');
   const [E1, setE1] = useState<string>('100.000');
   const [E2, setE2] = useState<string>('101.500');
   const [selectedConfigId, setSelectedConfigId] = useState<string>('2S-CORNER');
@@ -71,11 +73,17 @@ export default function TrackerPostTerrainPage() {
     }
 
     const startXNum = parseFloat(startX);
+    const startYNum = parseFloat(startY);
     const e1Num = parseFloat(E1);
     const e2Num = parseFloat(E2);
 
     if (isNaN(startXNum)) {
       setValidationError('Starting X Coordinate must be a valid numeric value.');
+      return;
+    }
+
+    if (isNaN(startYNum)) {
+      setValidationError('Starting Y Coordinate must be a valid numeric value.');
       return;
     }
 
@@ -95,6 +103,8 @@ export default function TrackerPostTerrainPage() {
       docNo: docNo.trim() || 'DOC-TRK-001',
       locationGrid: locationGrid.trim() || 'Grid A-1',
       startX: startXNum,
+      startY: startYNum,
+      yDirection,
       E1: e1Num,
       E2: e2Num,
       configId: selectedConfigId,
@@ -274,8 +284,8 @@ export default function TrackerPostTerrainPage() {
           </div>
         </div>
 
-        {/* Inputs Grid: X1 Starting X, E1, E2, Elevation Unit */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2 border-t border-slate-800/80">
+        {/* Inputs Grid: X1 Starting X, Y1 Starting Y, Y Progression Mode, E1, E2, Elevation Unit */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 pt-2 border-t border-slate-800/80">
           {/* Starting X Coordinate (X1) */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-2 font-black">
@@ -292,6 +302,61 @@ export default function TrackerPostTerrainPage() {
               className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-teal-500/40 text-teal-200 font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-teal-400 text-sm transition shadow-inner"
             />
             <p className="text-[11px] text-teal-300/80 font-semibold">Starting X coordinate datum for piles</p>
+          </div>
+
+          {/* Starting Y Coordinate (Y1) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-2 font-black">
+              <Ruler className="w-3.5 h-3.5 text-teal-400" />
+              <span>Y1 Starting Y ({elevationUnit}) *</span>
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={startY}
+              onChange={(e) => setStartY(e.target.value)}
+              placeholder="e.g. 0.000"
+              required
+              className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-teal-500/40 text-teal-200 font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-teal-400 text-sm transition shadow-inner"
+            />
+            <p className="text-[11px] text-teal-300/80 font-semibold">Starting Y coordinate datum for piles</p>
+          </div>
+
+          {/* Y Progression Mode Toggle */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2 font-black">
+              <Compass className="w-3.5 h-3.5 text-amber-400" />
+              <span>Y Coordinate Mode</span>
+            </label>
+            <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800 h-[46px] items-center">
+              <button
+                type="button"
+                onClick={() => setYDirection('DECREASING (-)')}
+                className={`flex-1 h-full rounded-xl text-xs font-bold transition ${
+                  yDirection === 'DECREASING (-)'
+                    ? 'bg-amber-600 text-white shadow-md border border-amber-400/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Subtract ground projection: Y_i = Y1 - cumGroundY (Reduce Y)"
+              >
+                Reduce Y (-)
+              </button>
+              <button
+                type="button"
+                onClick={() => setYDirection('INCREASING (+)')}
+                className={`flex-1 h-full rounded-xl text-xs font-bold transition ${
+                  yDirection === 'INCREASING (+)'
+                    ? 'bg-teal-600 text-white shadow-md border border-teal-400/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Add ground projection: Y_i = Y1 + cumGroundY (Add Y)"
+              >
+                Add Y (+)
+              </button>
+            </div>
+            <p className="text-[11px] text-amber-300/80 font-semibold">
+              {yDirection === 'DECREASING (-)' ? 'Reduce Y: Y_i = Y1 - ΔY' : 'Add Y: Y_i = Y1 + ΔY'}
+            </p>
           </div>
 
           {/* E1 Elevation */}
@@ -334,7 +399,7 @@ export default function TrackerPostTerrainPage() {
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Compass className="w-3.5 h-3.5 text-purple-400" />
-              <span>Input Unit (X, E1, E2)</span>
+              <span>Input Unit (X, Y, E1, E2)</span>
             </label>
             <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800 h-[46px] items-center">
               <button
@@ -360,7 +425,7 @@ export default function TrackerPostTerrainPage() {
                 Millimeters (mm)
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">Unit for X, E1, and E2 inputs</p>
+            <p className="text-[11px] text-slate-500">Unit for X, Y, E1, and E2 inputs</p>
           </div>
         </div>
 

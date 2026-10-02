@@ -9,6 +9,10 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     locationGrid,
     inspectionDate,
     config,
+    startX_m,
+    startX_mm,
+    startY_m,
+    startY_mm,
     E1_m,
     E2_m,
     deltaElevation_m,
@@ -48,11 +52,13 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     ['Parameter', 'Value', 'Unit', 'Details / Formula'],
     ['Tracker Configuration', config.name, '-', `${config.stringCount} String ${config.position}`],
     ['Total Pile Points', config.pileCount, 'Piles', `${config.segmentCount} Segments`],
-    ['E1 Starting Elevation', E1_m.toFixed(3), 'm', 'Starting Datum'],
-    ['E2 Ending Elevation', E2_m.toFixed(3), 'm', 'Ending Datum'],
+    ['X1 Starting X', startX_m.toFixed(3), 'm', 'Starting X Datum'],
+    ['Y1 Starting Y', startY_m.toFixed(3), 'm', 'Starting Y Datum'],
+    ['E1 Starting Elevation', E1_m.toFixed(3), 'm', 'Starting Elevation Datum'],
+    ['E2 Ending Elevation', E2_m.toFixed(3), 'm', 'Ending Elevation Datum'],
     ['Elevation Difference (ΔE)', deltaElevation_m.toFixed(3), 'm', 'E2 - E1'],
     ['Total Inclined Tracker Length', totalLengthMm, 'mm', `${totalLengthM.toFixed(3)} m`],
-    ['Total Horizontal Projection (Y_max)', totalHorizontalProjectionM.toFixed(3), 'm', 'L_total * cos(θ)'],
+    ['Total Horizontal Projection (Y_footprint)', totalHorizontalProjectionM.toFixed(3), 'm', 'L_total * cos(θ)'],
     ['Tracker Inclination Angle (θ)', thetaDeg.toFixed(6), 'degrees (°)', 'θ = asin(ΔE / L_total)'],
     ['Terrain Direction', direction, '-', 'UP SLOPE / DOWN SLOPE / LEVEL'],
     ['Endpoint Discrepancy Error', endpointErrorM.toFixed(6), 'm', endpointValidationPass ? 'PASS' : 'CHECK'],
@@ -87,13 +93,14 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
   });
 
   // Append TOTAL / SUM row for Coordinate Table
+  const finalPt = points[points.length - 1];
   masterReportData.push([
     'TOTAL / SUM',
     totalLengthMm,
     totalHorizontalProjectionMm.toFixed(3),
     totalHorizontalProjectionMm.toFixed(3),
-    '0.000',
-    totalHorizontalProjectionMm.toFixed(3),
+    points[0]?.xMm.toFixed(3) || '0.000',
+    finalPt ? finalPt.yMm.toFixed(3) : totalHorizontalProjectionMm.toFixed(3),
     E2_m.toFixed(3),
     `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
   ]);
@@ -198,10 +205,10 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     totalLengthMm,
     totalHorizontalProjectionMm.toFixed(3),
     totalHorizontalProjectionMm.toFixed(3),
-    '0.000',
-    totalHorizontalProjectionMm.toFixed(3),
+    points[0]?.xMm.toFixed(3) || '0.000',
+    finalPt ? finalPt.yMm.toFixed(3) : totalHorizontalProjectionMm.toFixed(3),
     (calculatedFinalZM * 1000).toFixed(3),
-    totalHorizontalProjectionM.toFixed(3),
+    finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
     E2_m.toFixed(3),
     `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
   ]);

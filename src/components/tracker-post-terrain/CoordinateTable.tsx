@@ -165,7 +165,7 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
       >
         <Ruler className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold text-teal-600 dark:text-teal-300">Coordinate Convention:</span> X coordinate is set to {isM ? points[0]?.xM.toFixed(3) : points[0]?.xMm.toFixed(3)} {unitMode}. Y represents cumulative horizontal ground distance along tracker axis, and Z represents post elevation above datum.
+          <span className="font-bold text-teal-600 dark:text-teal-300">Coordinate Convention:</span> X coordinate is set to {isM ? points[0]?.xM.toFixed(3) : points[0]?.xMm.toFixed(3)} {unitMode}. Y coordinate starts at Y1 = {isM ? result.startY_m.toFixed(3) : result.startY_mm.toFixed(3)} {unitMode} and progresses along tracker axis to Y_max = {isM ? (points[points.length - 1]?.yM).toFixed(3) : (points[points.length - 1]?.yMm).toFixed(3)} {unitMode}.
         </div>
       </div>
 
@@ -187,7 +187,7 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
               <th className="py-3.5 px-4">Point</th>
               <th className="py-3.5 px-4 text-right">Physical Segment Length ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">Ground Projection ΔY ({isM ? 'm' : 'mm'})</th>
-              <th className="py-3.5 px-4 text-right">Cumulative Ground Y ({isM ? 'm' : 'mm'})</th>
+              <th className="py-3.5 px-4 text-right">Cumulative Ground ΔY ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">X ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">Y Ground ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">Z Elevation ({isM ? 'm' : 'mm'})</th>
@@ -285,7 +285,7 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
                 {isM ? points[0]?.xM.toFixed(3) : points[0]?.xMm.toFixed(3)}
               </td>
               <td className="py-3.5 px-4 text-right text-teal-600 dark:text-teal-300 font-extrabold">
-                {isM ? result.totalHorizontalProjectionM.toFixed(3) : result.totalHorizontalProjectionMm.toFixed(3)}
+                {isM ? (points[points.length - 1]?.yM).toFixed(3) : (points[points.length - 1]?.yMm).toFixed(3)}
               </td>
               <td className="py-3.5 px-4 text-right text-sky-600 dark:text-sky-300 font-extrabold">
                 {isM ? result.E2_m.toFixed(3) : result.E2_mm.toFixed(3)}

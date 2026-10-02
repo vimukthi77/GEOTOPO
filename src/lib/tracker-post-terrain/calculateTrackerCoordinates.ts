@@ -29,11 +29,14 @@ export interface TerrainPointCoordinate {
 }
 
 export type DirectionType = 'UP SLOPE' | 'DOWN SLOPE' | 'LEVEL';
+export type YDirectionType = 'DECREASING (-)' | 'INCREASING (+)';
 
 export interface TrackerTerrainCalculationInput {
   zoneName: string;
   trackerId: string; // Tracker ID (e.g. TRK-01)
   startX?: number;   // Starting X coordinate (default 0.000)
+  startY?: number;   // Starting Y coordinate (default 0.000)
+  yDirection?: YDirectionType; // Progression direction for Y (default: DECREASING (-) [Y1 - cumGroundY])
   E1: number;        // Starting elevation
   E2: number;        // Ending elevation
   configId: string;
@@ -61,6 +64,9 @@ export interface TrackerTerrainCalculationResult {
   locationGrid: string;
   startX_m: number;
   startX_mm: number;
+  startY_m: number;
+  startY_mm: number;
+  yDirection: YDirectionType;
   E1_m: number;
   E2_m: number;
   E1_mm: number;
@@ -97,6 +103,8 @@ export function calculateTrackerCoordinates(
     zoneName,
     trackerId,
     startX = 0,
+    startY = 0,
+    yDirection = 'DECREASING (-)',
     E1,
     E2,
     configId,
@@ -114,6 +122,8 @@ export function calculateTrackerCoordinates(
   const unitMultiplier = elevationUnit === 'mm' ? 0.001 : 1;
   const startX_m = startX * unitMultiplier;
   const startX_mm = startX_m * 1000;
+  const startY_m = startY * unitMultiplier;
+  const startY_mm = startY_m * 1000;
   const E1_m = E1 * unitMultiplier;
   const E2_m = E2 * unitMultiplier;
   const E1_mm = E1_m * 1000;
@@ -149,6 +159,9 @@ export function calculateTrackerCoordinates(
       locationGrid,
       startX_m,
       startX_mm,
+      startY_m,
+      startY_mm,
+      yDirection,
       E1_m,
       E2_m,
       E1_mm,
@@ -228,8 +241,8 @@ export function calculateTrackerCoordinates(
     cumLengthM: 0,
     xM: startX_m,
     xMm: startX_mm,
-    yM: 0,
-    yMm: 0,
+    yM: startY_m,
+    yMm: startY_mm,
     zM: E1_m,
     zMm: E1_mm,
     deltaYM: null,
@@ -244,6 +257,8 @@ export function calculateTrackerCoordinates(
   let currentGroundYM = 0;
   let currentZM = E1_m;
   let currentZMm = E1_mm;
+
+  const isDecreasingY = yDirection === 'DECREASING (-)';
 
   for (let i = 0; i < config.segmentLengths.length; i++) {
     const segMm = config.segmentLengths[i];
@@ -266,6 +281,9 @@ export function calculateTrackerCoordinates(
     currentZMm += deltaZMm;
     currentZM += deltaZM;
 
+    const yM = isDecreasingY ? startY_m - currentGroundYM : startY_m + currentGroundYM;
+    const yMm = isDecreasingY ? startY_mm - currentGroundYMm : startY_mm + currentGroundYMm;
+
     points.push({
       pointIndex: i + 2,
       label: `P${i + 2}`,
@@ -281,8 +299,8 @@ export function calculateTrackerCoordinates(
       cumLengthM: currentPhysicalCumM,
       xM: startX_m,
       xMm: startX_mm,
-      yM: currentGroundYM,
-      yMm: currentGroundYMm,
+      yM,
+      yMm,
       zM: currentZM,
       zMm: currentZMm,
       deltaYM: deltaYM,
@@ -334,7 +352,7 @@ export function calculateTrackerCoordinates(
       id: 'coordinates',
       name: 'Coordinate Generation Complete',
       passed: points.length === config.pileCount,
-      message: `Successfully computed 3D (X, Y, Z) coordinates for all ${points.length} pile locations.`,
+      message: `Successfully computed 3D (X, Y, Z) coordinates for all ${points.length} pile locations. Y Direction: ${yDirection}.`,
     },
     {
       id: 'endpoint',
@@ -363,6 +381,9 @@ export function calculateTrackerCoordinates(
     locationGrid: locationGrid || 'Grid A-1',
     startX_m,
     startX_mm,
+    startY_m,
+    startY_mm,
+    yDirection,
     E1_m,
     E2_m,
     E1_mm,
@@ -392,3 +413,4 @@ export function calculateTrackerCoordinates(
     inspectionDate: formattedDate,
   };
 }
+

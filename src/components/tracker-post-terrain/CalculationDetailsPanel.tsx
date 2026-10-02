@@ -141,18 +141,23 @@ export default function CalculationDetailsPanel({ result }: CalculationDetailsPa
           {/* Section 4: Sequential Coordinate Increments */}
           <div className="space-y-2">
             <h5 className="font-bold text-xs uppercase tracking-wider text-teal-600 dark:text-teal-300">
-              4. Sequential Coordinate Iteration (Y and Z)
+              4. Sequential Coordinate Iteration (X, Y and Z)
             </h5>
             <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              Starting from P1 (Y0 = 0, Z0 = E1), each subsequent pile post coordinate is calculated iteratively from the fixed segment length Li:
+              Starting from P1 (X1 = {result.startX_m.toFixed(3)}m, Y1 = {result.startY_m.toFixed(3)}m, Z1 = {result.E1_m.toFixed(3)}m), each subsequent pile post coordinate is calculated iteratively from the fixed segment length Li:
             </p>
             <div className={`p-3 rounded-xl border font-mono text-xs space-y-1 ${
               isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}>
               <div>ΔY_i = L_i × cos(θ)   (Horizontal increment)</div>
               <div>ΔZ_i = L_i × sin(θ)   (Vertical increment)</div>
-              <div className="pt-1 text-teal-600 dark:text-teal-300 font-bold">Y_i = Y_(i-1) + ΔY_i</div>
-              <div className="text-sky-600 dark:text-sky-300 font-bold">Z_i = Z_(i-1) + ΔZ_i</div>
+              <div className="pt-1 text-teal-600 dark:text-teal-300 font-bold">X_i = X1</div>
+              <div className="text-teal-600 dark:text-teal-300 font-bold">
+                {result.yDirection === 'DECREASING (-)'
+                  ? 'Y_i = Y1 - cumGroundY_i = Y_(i-1) - ΔY_i (Reduce Y)'
+                  : 'Y_i = Y1 + cumGroundY_i = Y_(i-1) + ΔY_i (Add Y)'}
+              </div>
+              <div className="text-sky-600 dark:text-sky-300 font-bold">Z_i = Z1 + cumDeltaZ_i = Z_(i-1) + ΔZ_i</div>
             </div>
           </div>
 

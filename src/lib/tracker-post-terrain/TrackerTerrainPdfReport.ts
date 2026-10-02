@@ -166,10 +166,10 @@ export async function exportTrackerTerrainToPdf(
   const cardH = 15;
 
   const paramCards = [
+    { label: 'STARTING COORDS (X1, Y1)', val: `X: ${result.startX_m.toFixed(3)} m`, sub: `Y: ${result.startY_m.toFixed(3)} m` },
     { label: 'E1 & E2 ELEVATION', val: `${result.E1_m.toFixed(3)} → ${result.E2_m.toFixed(3)} m`, sub: `ΔE: ${result.deltaElevation_m >= 0 ? '+' : ''}${result.deltaElevation_m.toFixed(3)} m` },
-    { label: 'SLOPE DIRECTION', val: result.direction, sub: `Angle θ: ${result.thetaDeg.toFixed(6)}°` },
     { label: 'TRACKER LENGTH (L)', val: `${result.totalLengthM.toFixed(3)} m`, sub: `${result.totalLengthMm} mm` },
-    { label: 'GROUND PROJECTION (Y)', val: `${result.totalHorizontalProjectionM.toFixed(3)} m`, sub: `${result.totalHorizontalProjectionMm.toFixed(1)} mm` },
+    { label: 'GROUND FOOTPRINT (Y)', val: `${result.totalHorizontalProjectionM.toFixed(3)} m`, sub: `θ: ${result.thetaDeg.toFixed(4)}° (${result.direction})` },
   ];
 
   paramCards.forEach((card, idx) => {
@@ -295,14 +295,15 @@ export async function exportTrackerTerrainToPdf(
   doc.setFontSize(7.5);
   doc.setTextColor(3, 105, 161);
 
+  const finalPtPdf = result.points[result.points.length - 1];
   let totX = margin + 1.5;
   const totValues = [
     'TOTAL',
     result.totalLengthMm.toString(),
     result.totalHorizontalProjectionMm.toFixed(2),
     result.totalHorizontalProjectionMm.toFixed(2),
-    '0.000',
-    result.totalHorizontalProjectionMm.toFixed(2),
+    result.points[0]?.xMm.toFixed(3) || '0.000',
+    finalPtPdf ? finalPtPdf.yMm.toFixed(3) : result.totalHorizontalProjectionMm.toFixed(2),
     result.E2_m.toFixed(3),
     `${result.deltaElevation_mm >= 0 ? '+' : ''}${result.deltaElevation_mm.toFixed(2)}`,
   ];
