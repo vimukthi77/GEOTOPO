@@ -57,8 +57,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* TWO LARGE MODULE SELECTION CARDS GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left max-w-5xl mx-auto pt-2">
+          {/* MODULE SELECTION CARDS GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left max-w-7xl mx-auto pt-2">
             {/* MODULE CARD 1: Solar Pile Tracker Innovation Calculator */}
             <div className="bg-slate-900/85 hover:bg-slate-900/95 border border-slate-800 hover:border-teal-500/50 rounded-3xl p-6 sm:p-8 backdrop-blur-xl transition-all duration-300 shadow-2xl hover:shadow-teal-500/10 flex flex-col justify-between space-y-6 group">
               <div className="space-y-4">
@@ -162,6 +162,60 @@ export default function HomePage() {
                   className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-600 via-sky-600 to-[#112E81] hover:from-teal-500 hover:to-blue-600 text-white font-extrabold text-sm shadow-xl hover:shadow-sky-500/20 active:scale-[0.98] transition cursor-pointer"
                 >
                   <span>Open Terrain Coordinate Generator</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </Link>
+              </div>
+            </div>
+
+            {/* MODULE CARD 3: Bulk Tracker Post Terrain Generator */}
+            <div className="bg-slate-900/85 hover:bg-slate-900/95 border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-6 sm:p-8 backdrop-blur-xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/10 flex flex-col justify-between space-y-6 group">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="p-3.5 bg-emerald-950/60 text-emerald-300 rounded-2xl border border-emerald-500/30 shadow-inner group-hover:scale-105 transition-transform">
+                    <FileSpreadsheet className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                    Module 02B • Batch Excel
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-white group-hover:text-emerald-300 transition-colors">
+                    Bulk Tracker Terrain Generator
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Upload multi-tracker Excel files with Northing, Easting, E1, and E2. Generates unified workbooks with a Master Summary sheet and dedicated sheets for every Tracker ID in Meters.
+                  </p>
+                </div>
+
+                {/* Feature Highlights List */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-xs text-slate-300 font-medium">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Multi-Row Excel/CSV Upload</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Auto-Config ID Mapping</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>1 Sheet Per Tracker ID (.xlsx)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>All Output in Meters (m)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card CTA Link */}
+              <div className="pt-4 border-t border-slate-800/80">
+                <Link
+                  href="/tracker-post-terrain/bulk"
+                  className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-[#112E81] hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-xl hover:shadow-emerald-500/20 active:scale-[0.98] transition cursor-pointer"
+                >
+                  <span>Open Bulk Excel Generator</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                 </Link>
               </div>

@@ -223,7 +223,15 @@ export default function TrackerPostTerrainPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link
+              href="/tracker-post-terrain/bulk"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-sky-600 hover:brightness-110 text-white text-xs font-extrabold shadow-md transition"
+            >
+              <Layers className="w-4 h-4 text-amber-300" />
+              <span>Bulk Excel Upload</span>
+            </Link>
+
             <Link
               href="/"
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-xs font-bold transition"

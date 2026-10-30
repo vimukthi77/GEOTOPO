@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Calculator, Compass, Home, Loader2, Sun, Moon } from 'lucide-react';
+import { Calculator, Compass, Home, Layers, Loader2, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 interface UserSession {
@@ -107,7 +107,7 @@ export default function Navbar() {
         <Link
           href="/tracker-post-terrain"
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${
-            pathname.startsWith('/tracker-post-terrain')
+            pathname === '/tracker-post-terrain'
               ? isDark
                 ? 'bg-teal-500/15 border border-teal-500/30 text-teal-300'
                 : 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
@@ -117,8 +117,25 @@ export default function Navbar() {
           }`}
         >
           <Compass className="w-4 h-4 text-[#36ADA3]" />
-          <span className="hidden lg:inline">Tracker Post Terrain Coordinate Generator</span>
-          <span className="lg:hidden">Terrain Generator</span>
+          <span className="hidden lg:inline">Tracker Post Terrain</span>
+          <span className="lg:hidden">Single</span>
+        </Link>
+
+        <Link
+          href="/tracker-post-terrain/bulk"
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${
+            pathname.startsWith('/tracker-post-terrain/bulk')
+              ? isDark
+                ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300'
+                : 'bg-[#112E81]/10 border border-[#112E81]/20 text-[#112E81]'
+              : isDark
+              ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-sky-400" />
+          <span className="hidden lg:inline">Bulk Tracker Generator</span>
+          <span className="lg:hidden">Bulk</span>
         </Link>
 
         {/* Theme Toggle Button */}
