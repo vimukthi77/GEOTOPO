@@ -51,12 +51,45 @@ export default function TrackerPostTerrainPage() {
   const [selectedConfigId, setSelectedConfigId] = useState<string>('2S-CORNER');
   const [elevationUnit, setElevationUnit] = useState<'m' | 'mm'>('m');
 
+  // Elevation input mode: E1+E2 or E1+Tracker Angle θ
+  const [inputMode, setInputMode] = useState<'E1_E2' | 'E1_THETA'>('E1_E2');
+  const [thetaInput, setThetaInput] = useState<string>(''); // angle θ in degrees
+  const [thetaDirection, setThetaDirection] = useState<'UP' | 'DOWN'>('UP'); // slope direction
+
   // Calculation state
   const [result, setResult] = useState<TrackerTerrainCalculationResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const selectedConfig = TRACKER_TERRAIN_CONFIGS[selectedConfigId];
+
+  // Derived E2 in theta mode: sin(θ) = ΔE / L_total → ΔE = sin(θ) × L_total → E2 = E1 ± ΔE
+  const numTheta = parseFloat(thetaInput);
+  const numE1Preview = parseFloat(E1);
+  const unitMult = elevationUnit === 'mm' ? 0.001 : 1;
+  let derivedE2: number | null = null;
+  let derivedThetaDeg: number | null = null;
+
+  if (inputMode === 'E1_THETA') {
+    if (!isNaN(numTheta) && numTheta >= 0 && numTheta <= 90 && !isNaN(numE1Preview) && selectedConfig) {
+      const sinTheta = Math.sin(numTheta * (Math.PI / 180));
+      const totalLengthInInputUnit = selectedConfig.totalLengthM / unitMult;
+      const deltaE = sinTheta * totalLengthInInputUnit;
+      derivedE2 = thetaDirection === 'UP' ? numE1Preview + deltaE : numE1Preview - deltaE;
+    }
+  } else {
+    // In E1_E2 mode, compute θ from E1 and E2 for display
+    const numE2Preview = parseFloat(E2);
+    if (!isNaN(numE1Preview) && !isNaN(numE2Preview) && selectedConfig) {
+      const e1M = numE1Preview * unitMult;
+      const e2M = numE2Preview * unitMult;
+      const deltaE_m = e2M - e1M;
+      const ratioSin = deltaE_m / selectedConfig.totalLengthM;
+      if (ratioSin >= -1 && ratioSin <= 1) {
+        derivedThetaDeg = Math.asin(ratioSin) * (180 / Math.PI);
+      }
+    }
+  }
 
   const handleGenerate = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -75,7 +108,18 @@ export default function TrackerPostTerrainPage() {
     const startXNum = parseFloat(startX);
     const startYNum = parseFloat(startY);
     const e1Num = parseFloat(E1);
-    const e2Num = parseFloat(E2);
+
+    // Determine effective E2 based on input mode
+    let e2Num: number;
+    if (inputMode === 'E1_THETA') {
+      if (derivedE2 === null || isNaN(e1Num)) {
+        setValidationError('Please enter a valid E1 and Tracker Angle θ to derive E2.');
+        return;
+      }
+      e2Num = derivedE2;
+    } else {
+      e2Num = parseFloat(E2);
+    }
 
     if (isNaN(startXNum)) {
       setValidationError('Starting X Coordinate must be a valid numeric value.');
@@ -359,11 +403,11 @@ export default function TrackerPostTerrainPage() {
             </p>
           </div>
 
-          {/* E1 Elevation */}
+          {/* E1 Elevation — always editable */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Ruler className="w-3.5 h-3.5 text-emerald-400" />
-              <span>E1 Starting Elevation ({elevationUnit}) *</span>
+              <span>E1 Start Elevation ({elevationUnit}) *</span>
             </label>
             <input
               type="number"
@@ -377,22 +421,44 @@ export default function TrackerPostTerrainPage() {
             <p className="text-[11px] text-slate-500">Starting pile post elevation datum</p>
           </div>
 
-          {/* E2 Elevation */}
+          {/* E2 Elevation — editable in E1_E2 mode, read-only derived in E1_THETA mode */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <label className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
               <Ruler className="w-3.5 h-3.5 text-sky-400" />
-              <span>E2 Ending Elevation ({elevationUnit}) *</span>
+              <span className={inputMode === 'E1_E2' ? 'text-slate-300' : 'text-slate-500'}>
+                E2 End Elevation ({elevationUnit})
+              </span>
+              {inputMode === 'E1_THETA' && (
+                <span className="px-1.5 py-0.5 text-[9px] font-black bg-indigo-900/60 text-indigo-300 rounded border border-indigo-500/40 uppercase tracking-wider">
+                  Auto-Derived
+                </span>
+              )}
             </label>
-            <input
-              type="number"
-              step="any"
-              value={E2}
-              onChange={(e) => setE2(e.target.value)}
-              placeholder="e.g. 101.500"
-              required
-              className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 text-sm font-semibold transition font-mono shadow-inner"
-            />
-            <p className="text-[11px] text-slate-500">Ending pile post elevation datum</p>
+            {inputMode === 'E1_E2' ? (
+              <input
+                type="number"
+                step="any"
+                value={E2}
+                onChange={(e) => setE2(e.target.value)}
+                placeholder="e.g. 101.500"
+                required
+                className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 text-sm font-semibold transition font-mono shadow-inner"
+              />
+            ) : (
+              <div className="w-full px-4 py-3 rounded-2xl bg-indigo-950/60 border-2 border-indigo-500/40 text-indigo-200 font-mono font-bold text-sm min-h-[50px] flex items-center select-none">
+                {derivedE2 !== null
+                  ? `${derivedE2.toFixed(6)} ${elevationUnit}`
+                  : <span className="text-indigo-500/60 font-normal text-xs">Enter E1 + θ to derive…</span>}
+              </div>
+            )}
+            {inputMode === 'E1_THETA' && derivedE2 !== null && (
+              <p className="text-[11px] text-indigo-400/80 font-semibold">
+                E1 {thetaDirection === 'UP' ? '+' : '−'} sin({parseFloat(thetaInput).toFixed(3)}°) × {selectedConfig.totalLengthM.toFixed(3)} m
+              </p>
+            )}
+            {inputMode === 'E1_E2' && (
+              <p className="text-[11px] text-slate-500">Ending pile post elevation datum</p>
+            )}
           </div>
 
           {/* Elevation & Coordinate Unit Selector */}
@@ -426,6 +492,148 @@ export default function TrackerPostTerrainPage() {
               </button>
             </div>
             <p className="text-[11px] text-slate-500">Unit for X, Y, E1, and E2 inputs</p>
+          </div>
+        </div>
+
+        {/* Tracker Angle θ Input Row — always visible, full width */}
+        <div className="pt-2 border-t border-slate-800/60 space-y-4">
+          {/* Input Mode Toggle */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Elevation Input Mode:</span>
+            <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-700 gap-1">
+              <button
+                type="button"
+                onClick={() => { setInputMode('E1_E2'); setValidationError(null); }}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                  inputMode === 'E1_E2'
+                    ? 'bg-[#112E81] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Ruler className="w-3.5 h-3.5" />
+                E1 + E2
+              </button>
+              <button
+                type="button"
+                onClick={() => { setInputMode('E1_THETA'); setValidationError(null); }}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                  inputMode === 'E1_THETA'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span className="text-sm leading-none font-black">θ</span>
+                E1 + Tracker Angle θ
+              </button>
+            </div>
+            {inputMode === 'E1_E2' && (
+              <span className="text-[11px] text-slate-500">Enter both E1 and E2 elevations above — θ will be auto-calculated.</span>
+            )}
+            {inputMode === 'E1_THETA' && (
+              <span className="text-[11px] text-indigo-400">Enter E1 and Tracker Angle θ — E2 will be derived using ASIN formula.</span>
+            )}
+          </div>
+
+          {/* θ Input Row: Angle field + Direction + Read-only display */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {/* θ field — editable in E1_THETA, read-only in E1_E2 */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                <span className={`text-lg leading-none font-black ${inputMode === 'E1_THETA' ? 'text-indigo-400' : 'text-slate-500'}`}>θ</span>
+                <span className={inputMode === 'E1_THETA' ? 'text-indigo-300' : 'text-slate-500'}>
+                  Tracker Angle θ (°)
+                </span>
+                {inputMode === 'E1_E2' && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-slate-800 text-slate-400 rounded border border-slate-700 uppercase tracking-wider">Auto-Calc</span>
+                )}
+              </label>
+              {inputMode === 'E1_THETA' ? (
+                <>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      max="90"
+                      value={thetaInput}
+                      onChange={(e) => { setThetaInput(e.target.value); setValidationError(null); }}
+                      placeholder="e.g. 1.400"
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border-2 border-indigo-500/60 text-indigo-200 font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-indigo-400 text-sm transition shadow-inner"
+                    />
+                    <span className="absolute right-4 top-3.5 text-base font-black text-indigo-400 pointer-events-none">°</span>
+                  </div>
+                  <p className="text-[11px] text-indigo-400/80">ASIN formula: sin(θ) = ΔE / L_total</p>
+                </>
+              ) : (
+                <div className="w-full px-4 py-3 rounded-2xl bg-slate-900/60 border border-slate-700 text-slate-300 font-mono font-bold text-sm min-h-[50px] flex items-center select-none">
+                  {derivedThetaDeg !== null
+                    ? `${derivedThetaDeg.toFixed(6)}°`
+                    : <span className="text-slate-600 font-normal text-xs">Enter E1 + E2 to calculate…</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Slope Direction — only editable in E1_THETA mode */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                Slope Direction
+                {inputMode === 'E1_E2' && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-slate-800 text-slate-500 rounded border border-slate-700 uppercase tracking-wider">From E1/E2</span>
+                )}
+              </label>
+              {inputMode === 'E1_THETA' ? (
+                <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-700 h-[50px] items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { setThetaDirection('UP'); setValidationError(null); }}
+                    className={`flex-1 h-full rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      thetaDirection === 'UP'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ArrowRight className="w-3.5 h-3.5 rotate-[-45deg]" />
+                    UP (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setThetaDirection('DOWN'); setValidationError(null); }}
+                    className={`flex-1 h-full rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      thetaDirection === 'DOWN'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ArrowRight className="w-3.5 h-3.5 rotate-45" />
+                    DOWN (-)
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full px-4 py-3 rounded-2xl bg-slate-900/60 border border-slate-700 text-sm min-h-[50px] flex items-center select-none">
+                  {derivedThetaDeg !== null ? (
+                    <span className={`font-bold font-mono ${
+                      derivedThetaDeg > 0 ? 'text-emerald-400' : derivedThetaDeg < 0 ? 'text-amber-400' : 'text-slate-400'
+                    }`}>
+                      {derivedThetaDeg > 0 ? 'UP (+)' : derivedThetaDeg < 0 ? 'DOWN (-)' : 'LEVEL'}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600 font-normal text-xs">—</span>
+                  )}
+                </div>
+              )}
+              {inputMode === 'E1_THETA' && (
+                <p className="text-[11px] text-slate-500">Direction of slope from E1 to E2</p>
+              )}
+            </div>
+
+            {/* Summary info box */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Config Length (L_total)</label>
+              <div className="w-full px-4 py-3 rounded-2xl bg-slate-900/60 border border-slate-700 text-teal-300 font-mono font-bold text-sm min-h-[50px] flex items-center select-none">
+                {selectedConfig ? `${selectedConfig.totalLengthMm.toLocaleString()} mm = ${selectedConfig.totalLengthM.toFixed(3)} m` : '—'}
+              </div>
+              <p className="text-[11px] text-slate-500">Total physical inclined tracker length</p>
+            </div>
           </div>
         </div>
 

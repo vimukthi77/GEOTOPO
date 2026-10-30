@@ -50,6 +50,10 @@ export default function TrackerCalculator() {
   const [configKey, setConfigKey] = useState<string>('4_STRING_16');
   const [e1Input, setE1Input] = useState<string>('100.000');
   const [e2Input, setE2Input] = useState<string>('102.500');
+  // Input mode: 'E1_E2' uses both E1 & E2, 'E1_THETA' derives E2 from E1 + angle θ
+  const [inputMode, setInputMode] = useState<'E1_E2' | 'E1_THETA'>('E1_E2');
+  const [thetaInput, setThetaInput] = useState<string>(''); // tracker angle θ in degrees
+  const [thetaDirection, setThetaDirection] = useState<'UP' | 'DOWN'>('UP'); // slope direction for theta mode
   const [error, setError] = useState<string>('');
   const [showFixedTable, setShowFixedTable] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<string>('');
@@ -78,6 +82,7 @@ export default function TrackerCalculator() {
 
   const e1InputId = useId();
   const e2InputId = useId();
+  const thetaInputId = useId();
 
   // Load saved calculations from localStorage on initial render
   useEffect(() => {
@@ -108,16 +113,39 @@ export default function TrackerCalculator() {
   // Perform calculation
   let calculatedData: TrackerCalculationOutput | null = null;
   const numE1 = parseFloat(e1Input);
-  const numE2 = parseFloat(e2Input);
+  const numE2Raw = parseFloat(e2Input);
+  const numTheta = parseFloat(thetaInput);
 
-  if (e1Input.trim() !== '' && e2Input.trim() !== '' && !isNaN(numE1) && !isNaN(numE2)) {
+  // Derive effective E2 depending on input mode
+  let effectiveE2: number | null = null;
+  if (inputMode === 'E1_E2') {
+    if (e1Input.trim() !== '' && e2Input.trim() !== '' && !isNaN(numE1) && !isNaN(numE2Raw)) {
+      effectiveE2 = numE2Raw;
+    }
+  } else {
+    // E1_THETA mode: E2 = E1 ± tan(θ) × overallDistance
+    if (e1Input.trim() !== '' && thetaInput.trim() !== '' && !isNaN(numE1) && !isNaN(numTheta) && numTheta >= 0 && numTheta <= 90) {
+      const tanTheta = Math.tan(numTheta * (Math.PI / 180));
+      const overallDist = (trackerConfigurations[configKey] || trackerConfigurations['4_STRING_16']).overallDistance;
+      effectiveE2 = thetaDirection === 'UP'
+        ? numE1 + tanTheta * overallDist
+        : numE1 - tanTheta * overallDist;
+    }
+  }
+
+  if (effectiveE2 !== null && !isNaN(numE1)) {
     try {
-      calculatedData = calculateTracker(numE1, numE2, configKey);
+      calculatedData = calculateTracker(numE1, effectiveE2, configKey);
     } catch (err: any) {
       // Catch calculation errors if any
       console.error(err);
     }
   }
+
+  // Derived E2 string for display purposes in theta mode
+  const derivedE2Display = inputMode === 'E1_THETA' && effectiveE2 !== null
+    ? effectiveE2.toFixed(3)
+    : null;
 
   // Handle CSV Download
   const handleDownload = () => {
@@ -180,6 +208,8 @@ export default function TrackerCalculator() {
       // Automatically reset Section 3 (Elevation Inputs) and Section 4 (Site Checklist Metadata)
       setE1Input('');
       setE2Input('');
+      setThetaInput('');
+      setThetaDirection('UP');
       setTrackerId('');
       setStructure('');
       setLocationGrid('');
@@ -264,6 +294,9 @@ export default function TrackerCalculator() {
     setConfigKey(record.calculation.configurationKey);
     setE1Input(record.calculation.E1.toFixed(3));
     setE2Input(record.calculation.E2.toFixed(3));
+    // Always switch to E1_E2 mode when loading from history (E2 is stored directly)
+    setInputMode('E1_E2');
+    setThetaInput('');
     setError('');
     setActiveTab('results');
   };
@@ -474,6 +507,34 @@ export default function TrackerCalculator() {
               <span className="text-[11px] font-medium text-slate-400">Unit: Meters (m)</span>
             </div>
 
+            {/* Input Mode Toggle */}
+            <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => { setInputMode('E1_E2'); setError(''); }}
+                className={`py-2 px-2 text-center rounded-lg text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  inputMode === 'E1_E2'
+                    ? 'bg-[#112E81] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                <Ruler className="w-3 h-3" />
+                E1 + E2
+              </button>
+              <button
+                type="button"
+                onClick={() => { setInputMode('E1_THETA'); setError(''); }}
+                className={`py-2 px-2 text-center rounded-lg text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  inputMode === 'E1_THETA'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                <span className="text-sm leading-none">θ</span>
+                E1 + Angle θ
+              </button>
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-start gap-2 text-xs">
@@ -483,7 +544,7 @@ export default function TrackerCalculator() {
             )}
 
             <div className="space-y-4">
-              {/* E1 Input */}
+              {/* E1 — always editable */}
               <div>
                 <label htmlFor={e1InputId} className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                   E1 Elevation (m) — Start Point
@@ -495,41 +556,131 @@ export default function TrackerCalculator() {
                     step="any"
                     placeholder="e.g. 100.000"
                     value={e1Input}
-                    onChange={(e) => {
-                      setE1Input(e.target.value);
-                      setError('');
-                    }}
+                    onChange={(e) => { setE1Input(e.target.value); setError(''); }}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold text-base focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] transition shadow-inner"
                   />
-                  <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400 pointer-events-none">
-                    m
-                  </span>
+                  <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400 pointer-events-none">m</span>
                 </div>
               </div>
 
-              {/* E2 Input */}
+              {/* E2 — editable in E1_E2 mode, read-only derived in E1_THETA mode */}
               <div>
-                <label htmlFor={e2InputId} className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  E2 Elevation (m) — End Point
-                </label>
-                <div className="relative">
-                  <input
-                    id={e2InputId}
-                    type="number"
-                    step="any"
-                    placeholder="e.g. 102.500"
-                    value={e2Input}
-                    onChange={(e) => {
-                      setE2Input(e.target.value);
-                      setError('');
-                    }}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold text-base focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] transition shadow-inner"
-                  />
-                  <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400 pointer-events-none">
-                    m
+                <label htmlFor={e2InputId} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                  <span className={inputMode === 'E1_E2' ? 'text-slate-600' : 'text-slate-400'}>
+                    E2 Elevation (m) — End Point
                   </span>
-                </div>
+                  {inputMode === 'E1_THETA' && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black bg-indigo-100 text-indigo-600 rounded border border-indigo-200 uppercase tracking-wider">
+                      Auto-Derived
+                    </span>
+                  )}
+                </label>
+                {inputMode === 'E1_E2' ? (
+                  <div className="relative">
+                    <input
+                      id={e2InputId}
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 102.500"
+                      value={e2Input}
+                      onChange={(e) => { setE2Input(e.target.value); setError(''); }}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold text-base focus:outline-none focus:border-[#112E81] focus:ring-1 focus:ring-[#112E81] transition shadow-inner"
+                    />
+                    <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400 pointer-events-none">m</span>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="w-full px-4 py-2.5 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-900 font-mono font-black text-base select-none flex items-center min-h-[44px]">
+                      {derivedE2Display !== null ? `${derivedE2Display} m` : <span className="text-indigo-300 font-medium text-sm">Enter E1 + θ to derive…</span>}
+                    </div>
+                    <span className="absolute right-3.5 top-3 text-[9px] font-black text-indigo-400 pointer-events-none uppercase tracking-wider">derived</span>
+                  </div>
+                )}
+                {inputMode === 'E1_THETA' && derivedE2Display !== null && (
+                  <p className="text-[10px] text-indigo-500 mt-1 font-medium">
+                    E1 {thetaDirection === 'UP' ? '+' : '−'} tan({parseFloat(thetaInput).toFixed(3)}°) × {activeConfig.overallDistance.toFixed(3)} m
+                  </p>
+                )}
               </div>
+
+              {/* Tracker Angle θ — editable in E1_THETA mode, read-only auto-calculated in E1_E2 mode */}
+              <div>
+                <label htmlFor={thetaInputId} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                  <span className={inputMode === 'E1_THETA' ? 'text-indigo-700' : 'text-slate-600'}>
+                    Tracker Angle θ (°) — Inclination
+                  </span>
+                  {inputMode === 'E1_E2' && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black bg-slate-100 text-slate-500 rounded border border-slate-200 uppercase tracking-wider">
+                      Auto-Calculated
+                    </span>
+                  )}
+                </label>
+                {inputMode === 'E1_THETA' ? (
+                  <>
+                    <div className="relative">
+                      <input
+                        id={thetaInputId}
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="90"
+                        placeholder="e.g. 0.935"
+                        value={thetaInput}
+                        onChange={(e) => { setThetaInput(e.target.value); setError(''); }}
+                        className="w-full px-4 py-2.5 bg-white border-2 border-indigo-300 rounded-xl text-slate-900 font-semibold text-base focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 transition shadow-inner"
+                      />
+                      <span className="absolute right-3.5 top-2.5 text-base font-black text-indigo-500 pointer-events-none">°</span>
+                    </div>
+                    <p className="text-[10px] text-indigo-500 mt-1 font-medium">
+                      Enter angle between 0° and 5° (max permissible limit)
+                    </p>
+                  </>
+                ) : (
+                  <div className="relative">
+                    <div className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-mono font-black text-base select-none flex items-center min-h-[44px]">
+                      {calculatedData
+                        ? <span>{calculatedData.angleDeg.toFixed(3)}°</span>
+                        : <span className="text-slate-300 font-medium text-sm">Enter E1 + E2 to calculate…</span>}
+                    </div>
+                    <span className="absolute right-3.5 top-3 text-[9px] font-black text-slate-400 pointer-events-none uppercase tracking-wider">calc</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Direction Toggle — only shown in E1_THETA mode */}
+              {inputMode === 'E1_THETA' && (
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Slope Direction
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setThetaDirection('UP'); setError(''); }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                        thetaDirection === 'UP'
+                          ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                      }`}
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      UP (+)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setThetaDirection('DOWN'); setError(''); }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                        thetaDirection === 'DOWN'
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                      }`}
+                    >
+                      <ArrowDownRight className="w-3.5 h-3.5" />
+                      DOWN (-)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Test Presets */}
@@ -537,45 +688,82 @@ export default function TrackerCalculator() {
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                 Quick Test Scenarios
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSetPreset(100.0, 102.5)}
-                  className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  UP (+)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetPreset(105.0, 101.2)}
-                  className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <ArrowDownRight className="w-3.5 h-3.5" />
-                  DOWN (-)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetPreset(100.0, 100.0)}
-                  className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                  LEVEL
-                </button>
+              {inputMode === 'E1_E2' ? (
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset(100.0, 102.5)}
+                    className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    UP (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset(105.0, 101.2)}
+                    className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ArrowDownRight className="w-3.5 h-3.5" />
+                    DOWN (-)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset(100.0, 100.0)}
+                    className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    LEVEL
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleTrackerTypeChange('2 STRING');
-                    setConfigKey('2_STRING_8');
-                    handleSetPreset(100.0, 101.0);
-                  }}
-                  className="py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer col-span-3 mt-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Standard Example: Δ=1.000m (Tan: 0.016327, 0.935°)
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleTrackerTypeChange('2 STRING');
+                      setConfigKey('2_STRING_8');
+                      handleSetPreset(100.0, 101.0);
+                    }}
+                    className="py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer col-span-3 mt-1"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Standard Example: Δ=1.000m (Tan: 0.016327, 0.935°)
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setE1Input('100.000'); setThetaInput('0.935'); setThetaDirection('UP'); setError(''); }}
+                    className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    0.935° UP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setE1Input('100.000'); setThetaInput('0.935'); setThetaDirection('DOWN'); setError(''); }}
+                    className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ArrowDownRight className="w-3.5 h-3.5" />
+                    0.935° DOWN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setE1Input('100.000'); setThetaInput('5.000'); setThetaDirection('UP'); setError(''); }}
+                    className="py-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    5.000° UP (Max)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setE1Input('100.000'); setThetaInput('0'); setThetaDirection('UP'); setError(''); }}
+                    className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    0° LEVEL
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Save Calculation Details Button */}

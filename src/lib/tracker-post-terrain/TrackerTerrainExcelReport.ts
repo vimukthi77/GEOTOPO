@@ -57,52 +57,52 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     ['E1 Starting Elevation', E1_m.toFixed(3), 'm', 'Starting Elevation Datum'],
     ['E2 Ending Elevation', E2_m.toFixed(3), 'm', 'Ending Elevation Datum'],
     ['Elevation Difference (ΔE)', deltaElevation_m.toFixed(3), 'm', 'E2 - E1'],
-    ['Total Inclined Tracker Length', totalLengthMm, 'mm', `${totalLengthM.toFixed(3)} m`],
+    ['Total Inclined Tracker Length', totalLengthM.toFixed(3), 'm', 'Physical inclined tracker length'],
     ['Total Horizontal Projection (Y_footprint)', totalHorizontalProjectionM.toFixed(3), 'm', 'L_total * cos(θ)'],
     ['Tracker Inclination Angle (θ)', thetaDeg.toFixed(6), 'degrees (°)', 'θ = asin(ΔE / L_total)'],
     ['Terrain Direction', direction, '-', 'UP SLOPE / DOWN SLOPE / LEVEL'],
     ['Endpoint Discrepancy Error', endpointErrorM.toFixed(6), 'm', endpointValidationPass ? 'PASS' : 'CHECK'],
     [''],
 
-    // Point Coordinate Table Header
-    ['TRACKER POST TERRAIN COORDINATE TABLE'],
+    // Point Coordinate Table Header (All in Meters)
+    ['TRACKER POST TERRAIN COORDINATE TABLE (ALL VALUES IN METERS)'],
     [
       'Pile',
-      'Physical Tracker Segment Length (mm)',
-      'Horizontal Ground Projection (mm)',
-      'Cumulative Ground Location (mm)',
-      'X (mm)',
-      'Y Ground (mm)',
+      'Physical Tracker Segment Length (m)',
+      'Horizontal Ground Projection (m)',
+      'Cumulative Ground Location (m)',
+      'X (m)',
+      'Y Ground (m)',
       'Z Elevation (m)',
-      'ΔZ Elevation Change (mm)',
+      'ΔZ Elevation Change (m)',
     ],
   ];
 
-  // Append Point Coordinate Table Rows
+  // Append Point Coordinate Table Rows (All in Meters)
   points.forEach((p) => {
     masterReportData.push([
       p.label,
-      p.segmentLengthMm !== null ? p.segmentLengthMm : '—',
-      p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '—',
-      p.cumGroundYMm.toFixed(3),
-      p.xMm.toFixed(3),
-      p.yMm.toFixed(3),
+      p.segmentLengthM !== null ? p.segmentLengthM.toFixed(3) : '—',
+      p.deltaYM !== null ? p.deltaYM.toFixed(3) : '—',
+      p.cumGroundYM.toFixed(3),
+      p.xM.toFixed(3),
+      p.yM.toFixed(3),
       p.zM.toFixed(3),
-      p.deltaZMm !== null ? p.deltaZMm.toFixed(3) : '—',
+      p.deltaZM !== null ? p.deltaZM.toFixed(3) : '—',
     ]);
   });
 
-  // Append TOTAL / SUM row for Coordinate Table
+  // Append TOTAL / SUM row for Coordinate Table (All in Meters)
   const finalPt = points[points.length - 1];
   masterReportData.push([
     'TOTAL / SUM',
-    totalLengthMm,
-    totalHorizontalProjectionMm.toFixed(3),
-    totalHorizontalProjectionMm.toFixed(3),
-    points[0]?.xMm.toFixed(3) || '0.000',
-    finalPt ? finalPt.yMm.toFixed(3) : totalHorizontalProjectionMm.toFixed(3),
+    totalLengthM.toFixed(3),
+    totalHorizontalProjectionM.toFixed(3),
+    totalHorizontalProjectionM.toFixed(3),
+    points[0]?.xM.toFixed(3) || '0.000',
+    finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
     E2_m.toFixed(3),
-    `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
+    `${deltaElevation_m >= 0 ? '+' : ''}${deltaElevation_m.toFixed(3)}`,
   ]);
 
   // Append Blank Row & Engineering QA Check Section
@@ -112,8 +112,8 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     ['Check Item', 'Calculated Value', 'Target / Tolerance', 'Status'],
     [
       'Total Physical Segment Length Sum',
-      `${totalLengthMm} mm (${totalLengthM.toFixed(3)} m)`,
-      `${config.totalLengthMm} mm`,
+      `${totalLengthM.toFixed(3)} m`,
+      `${config.totalLengthM.toFixed(3)} m`,
       'PASS',
     ],
     [
@@ -171,60 +171,56 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
   XLSX.utils.book_append_sheet(workbook, wsChecklist, 'Gradient Checklist Report');
 
   // ----------------------------------------------------
-  // SHEET 2: RAW COORDINATES DATA (FOR CAD & SITE TEAMS)
+  // SHEET 2: RAW COORDINATES DATA (ALL IN METERS FOR CAD & SITE TEAMS)
   // ----------------------------------------------------
   const rawCoordHeaders = [
     'Pile',
-    'Physical Tracker Segment Length (mm)',
-    'Horizontal Ground Projection (mm)',
-    'Cumulative Ground Location (mm)',
-    'X (mm)',
-    'Y Ground (mm)',
-    'Z Elevation (mm)',
+    'Physical Tracker Segment Length (m)',
+    'Horizontal Ground Projection (m)',
+    'Cumulative Ground Location (m)',
+    'Cumulative Physical Length (m)',
+    'X (m)',
     'Y Ground (m)',
     'Z Elevation (m)',
-    'Vertical Elevation Change ΔZ (mm)',
+    'Vertical Elevation Change ΔZ (m)',
   ];
 
   const rawCoordRows = points.map((p) => [
     p.label,
-    p.segmentLengthMm !== null ? p.segmentLengthMm : '-',
-    p.deltaYMm !== null ? p.deltaYMm.toFixed(3) : '-',
-    p.cumGroundYMm.toFixed(3),
-    p.xMm.toFixed(3),
-    p.yMm.toFixed(3),
-    p.zMm.toFixed(3),
+    p.segmentLengthM !== null ? p.segmentLengthM.toFixed(3) : '-',
+    p.deltaYM !== null ? p.deltaYM.toFixed(3) : '-',
+    p.cumGroundYM.toFixed(3),
+    p.cumLengthM.toFixed(3),
+    p.xM.toFixed(3),
     p.yM.toFixed(3),
     p.zM.toFixed(3),
-    p.deltaZMm !== null ? p.deltaZMm.toFixed(3) : '-',
+    p.deltaZM !== null ? p.deltaZM.toFixed(3) : '-',
   ]);
 
-  // Append TOTAL row to Sheet 2
+  // Append TOTAL row to Sheet 2 (All in Meters)
   rawCoordRows.push([
     'TOTAL / SUM',
-    totalLengthMm,
-    totalHorizontalProjectionMm.toFixed(3),
-    totalHorizontalProjectionMm.toFixed(3),
-    points[0]?.xMm.toFixed(3) || '0.000',
-    finalPt ? finalPt.yMm.toFixed(3) : totalHorizontalProjectionMm.toFixed(3),
-    (calculatedFinalZM * 1000).toFixed(3),
+    totalLengthM.toFixed(3),
+    totalHorizontalProjectionM.toFixed(3),
+    totalHorizontalProjectionM.toFixed(3),
+    totalLengthM.toFixed(3),
+    points[0]?.xM.toFixed(3) || '0.000',
     finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
     E2_m.toFixed(3),
-    `${deltaElevation_m >= 0 ? '+' : ''}${(deltaElevation_m * 1000).toFixed(3)}`,
+    `${deltaElevation_m >= 0 ? '+' : ''}${deltaElevation_m.toFixed(3)}`,
   ]);
 
   const wsRawCoordinates = XLSX.utils.aoa_to_sheet([rawCoordHeaders, ...rawCoordRows]);
   wsRawCoordinates['!cols'] = [
     { wch: 10 },
-    { wch: 22 },
-    { wch: 24 },
+    { wch: 34 },
+    { wch: 32 },
+    { wch: 32 },
+    { wch: 30 },
     { wch: 16 },
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 28 },
-    { wch: 28 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 32 },
   ];
 
   XLSX.utils.book_append_sheet(workbook, wsRawCoordinates, 'Raw Coordinates');
