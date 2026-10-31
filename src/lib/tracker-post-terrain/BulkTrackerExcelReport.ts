@@ -70,7 +70,9 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
       'Easting Xn (m)',
       'Northing Yn (m)',
       'E1 Start Elev (m)',
+      'E1 Foundation Top (m)',
       'E2 End Elev (m)',
+      'E2 Foundation Top (m)',
       'ΔE Elev Diff (m)',
       'Inclined Length (m)',
       'Ground Footprint (m)',
@@ -98,7 +100,9 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
         finalPt ? finalPt.xM.toFixed(3) : calcResult.startX_m.toFixed(3),
         finalPt ? finalPt.yM.toFixed(3) : '—',
         calcResult.E1_m.toFixed(3),
+        (calcResult.E1_m + 0.150).toFixed(3),
         calcResult.E2_m.toFixed(3),
+        (calcResult.E2_m + 0.150).toFixed(3),
         calcResult.deltaElevation_m.toFixed(3),
         calcResult.totalLengthM.toFixed(3),
         calcResult.totalHorizontalProjectionM.toFixed(3),
@@ -120,7 +124,9 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
         '—',
         '—',
         input.E1.toFixed(3),
+        (input.E1 + 0.150).toFixed(3),
         input.E2.toFixed(3),
+        (input.E2 + 0.150).toFixed(3),
         (input.E2 - input.E1).toFixed(3),
         '—',
         '—',
@@ -139,6 +145,8 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
     `${validTrackers} Trackers Valid`,
     '—',
     totalPiles,
+    '—',
+    '—',
     '—',
     '—',
     '—',
@@ -169,7 +177,9 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
     { wch: 16 }, // Easting Xn
     { wch: 16 }, // Northing Yn
     { wch: 16 }, // E1
+    { wch: 22 }, // E1 Foundation Top
     { wch: 16 }, // E2
+    { wch: 22 }, // E2 Foundation Top
     { wch: 16 }, // ΔE
     { wch: 18 }, // Inclined Length
     { wch: 20 }, // Ground Footprint
@@ -257,6 +267,7 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
         'Easting X (m)',
         'Northing Y Ground (m)',
         'Z Elevation (m)',
+        'Foundation Top Elevation (m)',
         'ΔZ Elevation Change (m)',
       ],
     ];
@@ -272,6 +283,7 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
         p.xM.toFixed(3),
         p.yM.toFixed(3),
         p.zM.toFixed(3),
+        p.foundationTopElevationM.toFixed(3),
         p.deltaZM !== null ? p.deltaZM.toFixed(3) : '—',
       ]);
     });
@@ -286,6 +298,7 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
       points[0]?.xM.toFixed(3) || '0.000',
       finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
       E2_m.toFixed(3),
+      (E2_m + 0.150).toFixed(3),
       `${deltaElevation_m >= 0 ? '+' : ''}${deltaElevation_m.toFixed(3)}`,
     ]);
 
@@ -330,17 +343,18 @@ export function exportBulkTrackersToExcel(batch: BulkTrackerBatchResult): void {
       { wch: 18 }, // Easting X
       { wch: 18 }, // Northing Y Ground
       { wch: 18 }, // Z Elevation
+      { wch: 28 }, // Foundation Top Elevation (m)
       { wch: 24 }, // ΔZ Elevation Change
     ];
 
     wsTracker['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Top Title
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Subtitle
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Top Title
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Subtitle
       { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } }, // Client
       { s: { r: 4, c: 0 }, e: { r: 4, c: 3 } }, // EPC
       { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } }, // Structure
       { s: { r: 6, c: 1 }, e: { r: 6, c: 3 } }, // Tracker ID
-      { s: { r: 8, c: 0 }, e: { r: 8, c: 7 } }, // Geometry Header
+      { s: { r: 8, c: 0 }, e: { r: 8, c: 8 } }, // Geometry Header
     ];
 
     XLSX.utils.book_append_sheet(workbook, wsTracker, sheetName);
@@ -370,7 +384,7 @@ export function exportSampleBulkExcelTemplate(): void {
     [''],
     ['Structure : Tracker Mounting Structure', '', '', '', '', 'Location/ Grid : Z6'],
     ['TRACKER TABLE : C', '', '', '', '', 'Date : 2026-10-30'],
-    ['No.', 'Tracker ID', 'Tracker Type', 'Northing', 'Easting', 'E1', 'Pile Point', 'E2', 'Pile Number', 'Gradient( Degrees)'],
+    ['No.', 'Tracker ID', 'Tracker Type', 'Northing', 'Easting', 'Elevation', 'Pile Point', 'Elevation', 'Pile Number', 'Gradient( Degrees)'],
     [1, 'STS17-C-ET01', '2 String Corner', 473347.37, 579837.182, 100.49, 'C149', 99.742, 'C142', 0.7],
     [2, 'STS17-C-ET02', '2 String Corner', 473347.37, 579842.682, 100.727, 'C141', 99.81, 'C134', 0.858],
     [3, 'STS17-C-IT03', '2 String Internal', 473347.284, 579848.182, 100.854, 'C133', 99.926, 'C125', 0.869],
@@ -407,3 +421,4 @@ export function exportSampleBulkExcelTemplate(): void {
   XLSX.utils.book_append_sheet(workbook, ws, 'Tracker Batch Template');
   XLSX.writeFile(workbook, 'Tracker_Post_Terrain_Bulk_Upload_Template.xlsx');
 }
+

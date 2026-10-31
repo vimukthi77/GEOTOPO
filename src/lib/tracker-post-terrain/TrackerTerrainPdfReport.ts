@@ -201,7 +201,7 @@ export async function exportTrackerTerrainToPdf(
   doc.text('TRACKER POST TERRAIN COORDINATE TABLE', margin, yPos);
   yPos += 4;
 
-  const colWidths = [12, 25, 26, 26, 20, 25, 26, 26]; // Total = 186mm (contentWidth = 186mm)
+  const colWidths = [11, 23, 23, 23, 20, 23, 21, 22, 20]; // Total = 186mm (contentWidth = 186mm)
   const headers = [
     'Pile',
     'Phys Segment (mm)',
@@ -210,6 +210,7 @@ export async function exportTrackerTerrainToPdf(
     'X (mm)',
     'Y Ground (mm)',
     'Z Elevation (m)',
+    'Fdn Top (m)',
     'ΔZ Change (mm)',
   ];
 
@@ -218,9 +219,9 @@ export async function exportTrackerTerrainToPdf(
   doc.rect(margin, yPos, contentWidth, 6.5, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(6.8);
 
-  let curX = margin + 1.5;
+  let curX = margin + 1.2;
   headers.forEach((h, i) => {
     doc.text(h, curX, yPos + 4.5);
     curX += colWidths[i];
@@ -230,7 +231,7 @@ export async function exportTrackerTerrainToPdf(
 
   // Draw Table Body Rows
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
 
   result.points.forEach((pt, rowIdx) => {
     // Check page overflow
@@ -242,15 +243,15 @@ export async function exportTrackerTerrainToPdf(
       doc.rect(margin, yPos, contentWidth, 6.5, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      let rX = margin + 1.5;
+      doc.setFontSize(6.8);
+      let rX = margin + 1.2;
       headers.forEach((h, i) => {
         doc.text(h, rX, yPos + 4.5);
         rX += colWidths[i];
       });
       yPos += 6.5;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.2);
     }
 
     const isEven = rowIdx % 2 === 0;
@@ -260,7 +261,7 @@ export async function exportTrackerTerrainToPdf(
     doc.line(margin, yPos + 5.5, margin + contentWidth, yPos + 5.5);
 
     doc.setTextColor(15, 23, 42);
-    let cX = margin + 1.5;
+    let cX = margin + 1.2;
 
     const values = [
       pt.label,
@@ -270,6 +271,7 @@ export async function exportTrackerTerrainToPdf(
       pt.xMm.toFixed(3),
       pt.yMm.toFixed(3),
       pt.zM.toFixed(3),
+      pt.foundationTopElevationM.toFixed(3),
       pt.deltaZMm !== null ? pt.deltaZMm.toFixed(2) : '-',
     ];
 
@@ -292,11 +294,11 @@ export async function exportTrackerTerrainToPdf(
   doc.rect(margin, yPos, contentWidth, 6, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(3, 105, 161);
 
   const finalPtPdf = result.points[result.points.length - 1];
-  let totX = margin + 1.5;
+  let totX = margin + 1.2;
   const totValues = [
     'TOTAL',
     result.totalLengthMm.toString(),
@@ -305,6 +307,7 @@ export async function exportTrackerTerrainToPdf(
     result.points[0]?.xMm.toFixed(3) || '0.000',
     finalPtPdf ? finalPtPdf.yMm.toFixed(3) : result.totalHorizontalProjectionMm.toFixed(2),
     result.E2_m.toFixed(3),
+    (result.E2_m + 0.150).toFixed(3),
     `${result.deltaElevation_mm >= 0 ? '+' : ''}${result.deltaElevation_mm.toFixed(2)}`,
   ];
 

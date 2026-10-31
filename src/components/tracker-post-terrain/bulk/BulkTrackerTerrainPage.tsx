@@ -460,22 +460,25 @@ export default function BulkTrackerTerrainPage() {
                 Tracker Type
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
-                Northing (Y1)
+                Northing
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
-                Easting (X1)
+                Easting
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-sky-300">
-                E1
+                Elevation (E1)
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
                 Pile Point
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-sky-300">
-                E2
+                Elevation (E2)
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
                 Pile Number
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
+                Gradient( Degrees)
               </span>
             </div>
           </div>
@@ -881,6 +884,7 @@ export default function BulkTrackerTerrainPage() {
                             <th className="p-2.5 text-right">Easting X (m)</th>
                             <th className="p-2.5 text-right">Northing Y (m)</th>
                             <th className="p-2.5 text-right">Elev Z (m)</th>
+                            <th className="p-2.5 text-right text-emerald-400">Foundation Top (m)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
@@ -903,8 +907,11 @@ export default function BulkTrackerTerrainPage() {
                                 <td className="p-2.5 text-right text-slate-300">
                                   {pt.yM.toFixed(3)}
                                 </td>
-                                <td className="p-2.5 text-right font-bold text-emerald-400">
+                                <td className="p-2.5 text-right font-bold text-sky-400">
                                   {pt.zM.toFixed(3)}
+                                </td>
+                                <td className="p-2.5 text-right font-bold text-emerald-400">
+                                  {(pt.zM + 0.150).toFixed(3)}
                                 </td>
                               </tr>
                             );
@@ -930,3 +937,4 @@ export default function BulkTrackerTerrainPage() {
     </div>
   );
 }
+

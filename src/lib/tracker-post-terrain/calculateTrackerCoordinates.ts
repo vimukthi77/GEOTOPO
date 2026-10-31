@@ -22,6 +22,8 @@ export interface TerrainPointCoordinate {
   yMm: number;                            // Cumulative horizontal ground location Y in mm
   zM: number;                             // Elevation Z in m
   zMm: number;                            // Elevation Z in mm
+  foundationTopElevationM: number;        // Foundation Top Elevation = zM + 0.150 (Elevation + 150mm)
+  foundationTopElevationMm: number;       // Foundation Top Elevation in mm = zMm + 150
   deltaYM: number | null;                 // ΔY in m
   deltaYMm: number | null;                // ΔY in mm
   deltaZM: number | null;                 // ΔZ in m
@@ -245,6 +247,8 @@ export function calculateTrackerCoordinates(
     yMm: startY_mm,
     zM: E1_m,
     zMm: E1_mm,
+    foundationTopElevationM: E1_m + 0.150,
+    foundationTopElevationMm: E1_mm + 150,
     deltaYM: null,
     deltaYMm: null,
     deltaZM: null,
@@ -303,6 +307,8 @@ export function calculateTrackerCoordinates(
       yMm,
       zM: currentZM,
       zMm: currentZMm,
+      foundationTopElevationM: currentZM + 0.150,
+      foundationTopElevationMm: currentZMm + 150,
       deltaYM: deltaYM,
       deltaYMm: deltaYMm,
       deltaZM: deltaZM,

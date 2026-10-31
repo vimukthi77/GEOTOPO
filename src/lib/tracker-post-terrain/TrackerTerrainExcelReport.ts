@@ -74,6 +74,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
       'X (m)',
       'Y Ground (m)',
       'Z Elevation (m)',
+      'Foundation Top Elevation (m)',
       'ΔZ Elevation Change (m)',
     ],
   ];
@@ -88,6 +89,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
       p.xM.toFixed(3),
       p.yM.toFixed(3),
       p.zM.toFixed(3),
+      p.foundationTopElevationM.toFixed(3),
       p.deltaZM !== null ? p.deltaZM.toFixed(3) : '—',
     ]);
   });
@@ -102,6 +104,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     points[0]?.xM.toFixed(3) || '0.000',
     finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
     E2_m.toFixed(3),
+    (E2_m + 0.150).toFixed(3),
     `${deltaElevation_m >= 0 ? '+' : ''}${deltaElevation_m.toFixed(3)}`,
   ]);
 
@@ -146,16 +149,17 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     { wch: 32 },
     { wch: 16 },
     { wch: 18 },
-    { wch: 20 },
+    { wch: 18 },
+    { wch: 28 }, // Foundation Top Elevation (m)
     { wch: 24 },
   ];
 
   // Set Cell Merges for Header Titles & Grid
   wsChecklist['!merges'] = [
-    // Top Title: Row 0 (A1:H1)
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
-    // Subtitle: Row 1 (A2:H2)
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+    // Top Title: Row 0 (A1:I1)
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+    // Subtitle: Row 1 (A2:I2)
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
     // Row 3: Client (A4:D4)
     { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } },
     // Row 4: EPC Contractors (A5:D5)
@@ -164,8 +168,8 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } },
     // Row 6: Tracker ID (B7:D7)
     { s: { r: 6, c: 1 }, e: { r: 6, c: 3 } },
-    // Geometry Header Row 8 (A9:H9)
-    { s: { r: 8, c: 0 }, e: { r: 8, c: 7 } },
+    // Geometry Header Row 8 (A9:I9)
+    { s: { r: 8, c: 0 }, e: { r: 8, c: 8 } },
   ];
 
   XLSX.utils.book_append_sheet(workbook, wsChecklist, 'Gradient Checklist Report');
@@ -182,6 +186,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     'X (m)',
     'Y Ground (m)',
     'Z Elevation (m)',
+    'Foundation Top Elevation (m)',
     'Vertical Elevation Change ΔZ (m)',
   ];
 
@@ -194,6 +199,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     p.xM.toFixed(3),
     p.yM.toFixed(3),
     p.zM.toFixed(3),
+    p.foundationTopElevationM.toFixed(3),
     p.deltaZM !== null ? p.deltaZM.toFixed(3) : '-',
   ]);
 
@@ -207,6 +213,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     points[0]?.xM.toFixed(3) || '0.000',
     finalPt ? finalPt.yM.toFixed(3) : totalHorizontalProjectionM.toFixed(3),
     E2_m.toFixed(3),
+    (E2_m + 0.150).toFixed(3),
     `${deltaElevation_m >= 0 ? '+' : ''}${deltaElevation_m.toFixed(3)}`,
   ]);
 
@@ -220,6 +227,7 @@ export function exportTrackerTerrainToExcel(result: TrackerTerrainCalculationRes
     { wch: 16 },
     { wch: 18 },
     { wch: 18 },
+    { wch: 28 }, // Foundation Top Elevation (m)
     { wch: 32 },
   ];
 

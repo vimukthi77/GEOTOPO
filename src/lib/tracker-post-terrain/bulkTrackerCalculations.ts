@@ -243,25 +243,25 @@ export function parseBulkTrackerSheet(sheetData: any[][]): {
   headerRow.forEach((col, idx) => {
     const norm = col.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    if (norm === 'no' || norm === 'num' || norm === 'srno') {
+    if (norm === 'no' || norm === 'num' || norm === 'srno' || norm === 'item') {
       if (colNo === -1) colNo = idx;
-    } else if (norm.includes('trackerid') || norm === 'tracker') {
+    } else if (norm.includes('trackerid') || norm === 'tracker' || (norm.includes('tracker') && norm.includes('id'))) {
       if (colTrackerId === -1) colTrackerId = idx;
-    } else if (norm.includes('trackertype') || norm.includes('type')) {
+    } else if (norm.includes('trackertype') || (norm.includes('tracker') && norm.includes('type')) || norm === 'type') {
       if (colTrackerType === -1) colTrackerType = idx;
     } else if (norm.includes('north')) {
       if (colNorthing === -1) colNorthing = idx;
     } else if (norm.includes('east')) {
       if (colEasting === -1) colEasting = idx;
-    } else if (norm === 'e1' || norm.includes('startelev')) {
+    } else if (norm === 'e1' || norm.startsWith('e1') || norm.endsWith('e1') || norm.includes('startelev') || norm.includes('elev1')) {
       colE1 = idx;
-    } else if (norm === 'e2' || norm.includes('endelev')) {
+    } else if (norm === 'e2' || norm.startsWith('e2') || norm.endsWith('e2') || norm.includes('endelev') || norm.includes('elev2')) {
       colE2 = idx;
     } else if (norm.includes('elevation') || norm.includes('elev')) {
       elevationColIndices.push(idx);
     } else if (norm.includes('pilepoint') || (norm.includes('pile') && norm.includes('point'))) {
       colPilePoint = idx;
-    } else if (norm.includes('pilenumber') || (norm.includes('pile') && norm.includes('number'))) {
+    } else if (norm.includes('pilenumber') || (norm.includes('pile') && norm.includes('number')) || norm.includes('pileend')) {
       colPileNumber = idx;
     } else if (norm.includes('gradient') || norm.includes('degree') || norm.includes('angle') || norm.includes('slope')) {
       colGradient = idx;
@@ -272,8 +272,11 @@ export function parseBulkTrackerSheet(sheetData: any[][]): {
   if (colE1 === -1 && elevationColIndices.length > 0) {
     colE1 = elevationColIndices[0];
   }
-  if (colE2 === -1 && elevationColIndices.length > 1) {
-    colE2 = elevationColIndices[1];
+  if (colE2 === -1) {
+    const remainingElev = elevationColIndices.filter((i) => i !== colE1);
+    if (remainingElev.length > 0) {
+      colE2 = remainingElev[0];
+    }
   }
 
   // Validate essential column mappings
@@ -477,3 +480,4 @@ No.,,Tracker ID,Tracker Type ,Northing,Easting,E1,Pile Point,E2,Pile Number,Grad
 16,,STS17-C-ET16,2 String Corner,473347.37,579919.682,101.259,C016,99.655,C009,1.5
 17,,STS17-C-ET17,2 String Corner,473347.37,579925.182,100.998,C008,99.621,C001,1.288
 `;
+

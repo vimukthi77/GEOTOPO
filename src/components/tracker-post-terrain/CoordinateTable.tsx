@@ -24,9 +24,10 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
       const x = unitMode === 'm' ? p.xM.toFixed(3) : p.xMm.toFixed(3);
       const y = unitMode === 'm' ? p.yM.toFixed(3) : p.yMm.toFixed(3);
       const z = unitMode === 'm' ? p.zM.toFixed(3) : p.zMm.toFixed(3);
-      return `${p.label}\t${x}\t${y}\t${z}`;
+      const fdn = unitMode === 'm' ? (p.zM + 0.150).toFixed(3) : (p.zMm + 150).toFixed(1);
+      return `${p.label}\t${x}\t${y}\t${z}\t${fdn}`;
     });
-    const header = `Point\tX (${unitMode})\tY (${unitMode})\tZ (${unitMode})`;
+    const header = `Point\tX (${unitMode})\tY (${unitMode})\tZ (${unitMode})\tFoundationTop (${unitMode})`;
     const text = [header, ...lines].join('\n');
 
     navigator.clipboard.writeText(text);
@@ -36,7 +37,7 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
 
   const handleCopyFullCsv = () => {
     const isM = unitMode === 'm';
-    const header = `Point,Segment (${isM ? 'm' : 'mm'}),CumDist (${isM ? 'm' : 'mm'}),X (${isM ? 'm' : 'mm'}),Y (${isM ? 'm' : 'mm'}),Z (${isM ? 'm' : 'mm'}),DeltaY (${isM ? 'm' : 'mm'}),DeltaZ (${isM ? 'm' : 'mm'})`;
+    const header = `Point,Segment (${isM ? 'm' : 'mm'}),CumDist (${isM ? 'm' : 'mm'}),X (${isM ? 'm' : 'mm'}),Y (${isM ? 'm' : 'mm'}),Z (${isM ? 'm' : 'mm'}),FoundationTop (${isM ? 'm' : 'mm'}),DeltaY (${isM ? 'm' : 'mm'}),DeltaZ (${isM ? 'm' : 'mm'})`;
 
     const rows = points.map((p) => {
       const seg = p.segmentLengthMm !== null ? (isM ? p.segmentLengthM!.toFixed(3) : p.segmentLengthMm) : '';
@@ -44,9 +45,10 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
       const x = isM ? p.xM.toFixed(3) : p.xMm.toFixed(3);
       const y = isM ? p.yM.toFixed(3) : p.yMm.toFixed(3);
       const z = isM ? p.zM.toFixed(3) : p.zMm.toFixed(3);
+      const fdn = isM ? (p.zM + 0.150).toFixed(3) : (p.zMm + 150).toFixed(1);
       const dy = p.deltaYM !== null ? (isM ? p.deltaYM!.toFixed(3) : p.deltaYMm!.toFixed(3)) : '';
       const dz = p.deltaZM !== null ? (isM ? p.deltaZM!.toFixed(3) : p.deltaZMm!.toFixed(3)) : '';
-      return `${p.label},${seg},${cum},${x},${y},${z},${dy},${dz}`;
+      return `${p.label},${seg},${cum},${x},${y},${z},${fdn},${dy},${dz}`;
     });
 
     const csvText = [header, ...rows].join('\n');
@@ -191,6 +193,7 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
               <th className="py-3.5 px-4 text-right">X ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">Y Ground ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">Z Elevation ({isM ? 'm' : 'mm'})</th>
+              <th className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-400">Foundation Top ({isM ? 'm' : 'mm'})</th>
               <th className="py-3.5 px-4 text-right">ΔZ Elevation Change ({isM ? 'm' : 'mm'})</th>
             </tr>
           </thead>
@@ -250,6 +253,9 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
                   <td className="py-3 px-4 text-right text-sky-700 dark:text-sky-300 font-bold">
                     {isM ? pt.zM.toFixed(3) : pt.zMm.toFixed(3)}
                   </td>
+                  <td className="py-3 px-4 text-right text-emerald-600 dark:text-emerald-300 font-bold">
+                    {isM ? (pt.zM + 0.150).toFixed(3) : (pt.zMm + 150).toFixed(1)}
+                  </td>
                   <td className={`py-3 px-4 text-right ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {pt.deltaZM !== null
                       ? isM
@@ -289,6 +295,9 @@ export default function CoordinateTable({ result }: CoordinateTableProps) {
               </td>
               <td className="py-3.5 px-4 text-right text-sky-600 dark:text-sky-300 font-extrabold">
                 {isM ? result.E2_m.toFixed(3) : result.E2_mm.toFixed(3)}
+              </td>
+              <td className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-300 font-extrabold">
+                {isM ? (result.E2_m + 0.150).toFixed(3) : (result.E2_mm + 150).toFixed(1)}
               </td>
               <td className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-300 font-extrabold">
                 {isM
